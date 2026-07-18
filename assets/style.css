@@ -1100,8 +1100,7 @@ button.ctrl-btn.ghost:hover {
   display: block;
   width: 10px;
   margin: 14px 0 0 auto;
-  line-height: 0;
-}
+  line-height: 0; cursor: pointer; }
 
 .erabbit-mark img {
   display: block;
