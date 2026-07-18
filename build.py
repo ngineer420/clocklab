@@ -363,8 +363,8 @@ def footer():
         <li><a href="/terms/">Terms</a></li>
       </ul>
     </div>
-    {erabbit}
-  </footer>""".format(erabbit=ERABBIT)
+  </footer>
+{erabbit}""".format(erabbit=ERABBIT)
 
 
 def head(title, description, canonical_path, json_ld):
