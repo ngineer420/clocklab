@@ -245,7 +245,7 @@ p {
   border-radius: 999px;
   display: grid;
   place-items: center;
-  cursor: pointer;
+  cursor: default;
   flex-shrink: 0;
 }
 
@@ -263,7 +263,7 @@ p {
   width: 36px;
   height: 36px;
   border-radius: var(--radius-sm);
-  cursor: pointer;
+  cursor: default;
 }
 
 @media (max-width: 880px) {
@@ -757,7 +757,7 @@ p {
 
 button.ctrl-btn {
   appearance: none;
-  cursor: pointer;
+  cursor: default;
   border: 1px solid var(--line);
   background: linear-gradient(180deg, var(--panel-hi), var(--bg-raised));
   color: var(--fg);
@@ -974,7 +974,7 @@ button.ctrl-btn.ghost:hover {
   border: none;
   background: none;
   color: var(--fg-dim);
-  cursor: pointer;
+  cursor: default;
   font-size: 15px;
   line-height: 1;
   padding: 2px;
@@ -1100,7 +1100,7 @@ button.ctrl-btn.ghost:hover {
   display: block;
   width: 10px;
   margin: 14px 0 0 auto;
-  line-height: 0; cursor: pointer; }
+  line-height: 0; cursor: default; }
 
 .erabbit-mark img {
   display: block;
