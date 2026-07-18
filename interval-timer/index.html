@@ -1,0 +1,136 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <script>(function(){try{var r=document.documentElement;var t=localStorage.getItem("clocklab-theme");if(!t){t=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";}r.setAttribute("data-theme",t);}catch(e){}})();</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Interval Timer — Free, Private, Browser-Only | clocklab.net</title>
+  <meta name="description" content="Free browser-based HIIT interval timer. Configurable work/rest lengths and round count, with a get-ready countdown and round dots. No install, works offline.">
+  <link rel="canonical" href="https://clocklab.net/interval-timer/">
+  <meta name="theme-color" content="#15181c">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="clocklab.net">
+  <meta property="og:title" content="Interval Timer — Free, Private, Browser-Only | clocklab.net">
+  <meta property="og:description" content="Free browser-based HIIT interval timer. Configurable work/rest lengths and round count, with a get-ready countdown and round dots. No install, works offline.">
+  <meta property="og:url" content="https://clocklab.net/interval-timer/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="Interval Timer — Free, Private, Browser-Only | clocklab.net">
+  <meta name="twitter:description" content="Free browser-based HIIT interval timer. Configurable work/rest lengths and round count, with a get-ready countdown and round dots. No install, works offline.">
+  <link rel="stylesheet" href="/assets/style.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"Interval Timer \u2014 clocklab.net","url":"https://clocklab.net/interval-timer/","applicationCategory":"UtilitiesApplication","operatingSystem":"Any (runs in browser)","description":"Free browser-based HIIT interval timer. Configurable work/rest lengths and round count, with a get-ready countdown and round dots. No install, works offline.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"publisher":{"@type":"Organization","name":"clocklab.net"}}</script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7560786263587509" crossorigin="anonymous"></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <a href="/" class="wordmark" data-panel-link=""><span class="tick">[</span>clocklab<span class="tick">]</span></a>
+      <button type="button" class="nav-toggle" id="nav-toggle" aria-expanded="false" aria-controls="tool-nav" aria-label="Toggle menu">☰</button>
+      <ul class="tool-nav" id="tool-nav">
+      <li><a href="/" data-panel-link="">Home</a></li>
+      <li><a href="/countdown-timer/" data-panel-link="countdown-timer">Countdown Timer</a></li>
+      <li><a href="/stopwatch/" data-panel-link="stopwatch">Stopwatch</a></li>
+      <li><a href="/pomodoro-timer/" data-panel-link="pomodoro-timer">Pomodoro Timer</a></li>
+      <li><a href="/alarm-clock/" data-panel-link="alarm-clock">Alarm Clock</a></li>
+      <li><a href="/interval-timer/" data-panel-link="interval-timer" aria-current="page">Interval Timer</a></li>
+      <li><a href="/world-clock/" data-panel-link="world-clock">World Clock</a></li>
+      </ul>
+      <div class="header-controls">
+        <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Toggle light and dark theme"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
+      </div>
+    </div>
+  </header>
+  <main>
+    <section class="panel">
+      <div class="wrap">
+        <div class="panel-head">
+          <h1 tabindex="-1">Interval Timer</h1>
+          <a class="back-to-tools" href="/" data-panel-link="">← All tools</a>
+        </div>
+        <p>Set a work length, a rest length and a number of rounds, and clocklab alternates them automatically with a chime at every switch — a 5-second get-ready countdown gives you time to get into position before round one. The dots above the dial track exactly which round you're on.</p>
+
+    <div class="instrument">
+      <div class="nameplate">
+        <span class="nameplate-label">Interval Timer</span>
+        <span class="status-led" id="iv-status" data-state="idle">Idle</span>
+      </div>
+      <div class="dial-wrap">
+        <div class="dial-mount" id="iv-dial"></div>
+        <div class="screen">
+          <div class="readout" id="iv-readout">00:20</div>
+          <div class="readout-phase" id="iv-phase">Work</div>
+        </div>
+      </div>
+      <div class="pip-row" id="iv-pips"></div>
+      <div class="field-row">
+        <div class="field"><label for="iv-work">Work (sec)</label><input type="number" id="iv-work" min="1" max="600" value="20"></div>
+        <div class="field"><label for="iv-rest">Rest (sec)</label><input type="number" id="iv-rest" min="1" max="600" value="10"></div>
+        <div class="field"><label for="iv-rounds">Rounds</label><input type="number" id="iv-rounds" min="1" max="50" value="8"></div>
+      </div>
+      <div class="controls-row">
+        <button type="button" class="ctrl-btn primary" id="iv-start">Start</button>
+        <button type="button" class="ctrl-btn" id="iv-pause" disabled>Pause</button>
+        <button type="button" class="ctrl-btn ghost" id="iv-reset">Reset</button>
+      </div>
+      <p class="hint">Starts with a 5-second get-ready countdown, then alternates work and rest.</p>
+    </div>
+
+      </div>
+    </section>
+
+    <section class="content-section" id="how-it-works">
+      <div class="wrap">
+        <h2>How to use the Interval Timer</h2>
+        <div class="how-to">
+          <ol>
+        <li>Set Work and Rest lengths in seconds, and how many Rounds to run.</li>
+        <li>Tap Start — a 5-second get-ready countdown runs first, then work and rest alternate automatically with a chime at each switch.</li>
+        <li>Watch the round dots: filled dots are completed rounds, the glowing dot is the round in progress.</li>
+        <li>When the last round's work phase ends, the display reads Done — tap Start again (now labelled Restart) to run it again.</li>
+          </ol>
+        </div>
+      </div>
+    </section>
+
+    <section class="content-section">
+      <div class="wrap">
+        <h2>FAQ</h2>
+        <dl class="faq">
+        <dt>What's the get-ready countdown for?</dt>
+        <dd>A fixed 5-second buffer after you tap Start, before round one's work phase begins — enough time to get off your phone and into position.</dd>
+        <dt>Does Rest count as part of the round?</dt>
+        <dd>Yes — each round is one Work phase followed by one Rest phase (except the very last round, which ends after Work with no trailing rest).</dd>
+        <dt>Can I pause mid-round?</dt>
+        <dd>Yes — Pause holds the exact remaining time in the current phase; Start resumes it from exactly there.</dd>
+        <dt>How is this different from the Pomodoro Timer?</dt>
+        <dd>Pomodoro is built around longer focus/break cycles (minutes) with a long-break rhythm for deep work; the Interval Timer is built around short work/rest bursts (seconds) for a fixed number of rounds — classic HIIT structure.</dd>
+        </dl>
+      </div>
+    </section>
+
+    <section class="content-section">
+      <div class="wrap">
+        <h2>Related tools</h2>
+        <div class="related-links">
+        <a href="/pomodoro-timer/">Pomodoro Timer →</a>
+        <a href="/stopwatch/">Stopwatch →</a>
+        <a href="/countdown-timer/">Countdown Timer →</a>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer class="site-footer">
+    <div class="wrap">
+      <p class="footer-tag">clocklab.net — browser-only timers. Nothing you set here ever leaves this tab.</p>
+      <ul class="footer-links">
+        <li><a href="/privacy/">Privacy</a></li>
+        <li><a href="/terms/">Terms</a></li>
+      </ul>
+    </div>
+    <a href="https://erabb.it" class="erabbit-mark" aria-label="erabb.it"><img src="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐇</text></svg>" width="10" height="10" alt=""></a>
+  </footer>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"What's the get-ready countdown for?","acceptedAnswer":{"@type":"Answer","text":"A fixed 5-second buffer after you tap Start, before round one's work phase begins \u2014 enough time to get off your phone and into position."}},{"@type":"Question","name":"Does Rest count as part of the round?","acceptedAnswer":{"@type":"Answer","text":"Yes \u2014 each round is one Work phase followed by one Rest phase (except the very last round, which ends after Work with no trailing rest)."}},{"@type":"Question","name":"Can I pause mid-round?","acceptedAnswer":{"@type":"Answer","text":"Yes \u2014 Pause holds the exact remaining time in the current phase; Start resumes it from exactly there."}},{"@type":"Question","name":"How is this different from the Pomodoro Timer?","acceptedAnswer":{"@type":"Answer","text":"Pomodoro is built around longer focus/break cycles (minutes) with a long-break rhythm for deep work; the Interval Timer is built around short work/rest bursts (seconds) for a fixed number of rounds \u2014 classic HIIT structure."}}]}</script>
+  <script src="/assets/dial.js"></script>
+  <script src="/assets/audio.js"></script>
+  <script src="/assets/app.js"></script>
+</body>
+</html>
