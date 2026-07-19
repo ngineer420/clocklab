@@ -90,6 +90,7 @@
     if (!panels.length || !overview) return;
 
     var navLinks = document.querySelectorAll("[data-panel-link]");
+    var hero = document.querySelector(".hero");
 
     function show(slug, push) {
       slug = slug || "countdown-timer"; // homepage shows the primary tool live
@@ -100,6 +101,9 @@
         p.hidden = true;
       });
       overview.hidden = true;
+      // When a specific tool is shown, hide the marketing hero so the tool sits
+      // right under the nav instead of below a tall banner.
+      if (hero) hero.hidden = !!slug;
       target.hidden = false;
 
       navLinks.forEach(function (a) {
@@ -122,7 +126,9 @@
         history.pushState({ panel: slug || null }, "", path);
       }
 
-      target.scrollIntoView({ behavior: "instant", block: "start" });
+      // Only scroll on user-initiated switches, never on initial load (which
+      // would jump the freshly-loaded page down past the header).
+      if (push) target.scrollIntoView({ behavior: "instant", block: "start" });
       var heading = target.querySelector("h1, h2");
       if (heading) heading.setAttribute("tabindex", "-1");
       if (heading) heading.focus({ preventScroll: true });
