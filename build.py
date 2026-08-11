@@ -338,6 +338,23 @@ NO_FLASH = """<script>(function(){try{var r=document.documentElement;var t=local
 
 ADSENSE = '<script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7560786263587509" crossorigin="anonymous"></script>'
 
+# The tab mark. People leave a countdown running in a background tab and find it
+# again by its icon, so the shape has to survive 16px: a bare ring at that size
+# is a smudge, and a thin hand disappears. An amber face carrying a dark V of
+# hands keeps one strong asymmetry that still reads when it's four pixels wide.
+# --panel for the housing so it has an edge against a light and a dark tab strip
+# alike; --amber for the face, the site's "running" signal colour.
+# Written from here rather than kept by hand in assets/ so the mark and the
+# <link> in head() below can never drift apart.
+FAVICON_PATH = "assets/favicon.svg"
+FAVICON_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
+  <rect width="64" height="64" rx="14" fill="#15181c"/>
+  <circle cx="32" cy="32" r="22" fill="#ffab2e"/>
+  <path d="M32 32 L32 15" stroke="#15181c" stroke-width="7" stroke-linecap="round"/>
+  <path d="M32 32 L45 39" stroke="#15181c" stroke-width="7" stroke-linecap="round"/>
+</svg>
+"""
+
 ERABBIT = '<a href="https://erabb.it" class="erabbit-mark" aria-label="erabb.it"><img src="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>\U0001F407</text></svg>" width="10" height="10" alt=""></a>'
 
 THEME_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>'
@@ -399,6 +416,7 @@ def head(title, description, canonical_path, json_ld):
   <title>{title}</title>
   <meta name="description" content="{description}">
   <link rel="canonical" href="{canonical}">
+  <link rel="icon" href="/{favicon}" type="image/svg+xml">
   <meta name="theme-color" content="#15181c">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="clocklab.net">
@@ -413,6 +431,7 @@ def head(title, description, canonical_path, json_ld):
   {adsense}
 </head>""".format(
         no_flash=NO_FLASH,
+        favicon=FAVICON_PATH,
         title=title,
         description=description,
         canonical=canonical,
@@ -730,6 +749,7 @@ not_found_page()
 
 # --------------------------------------------------------- root files --
 
+write(FAVICON_PATH, FAVICON_SVG)
 write("CNAME", "clocklab.net\n")
 write("ads.txt", "google.com, pub-7560786263587509, DIRECT, f08c47fec0942fa0\n")
 write(".nojekyll", "")
