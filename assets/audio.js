@@ -16,7 +16,11 @@
       ctx = new AC();
     }
     if (ctx.state === "suspended") {
-      ctx.resume();
+      // Safari rejects this outright when there has been no user gesture
+      // yet; an unhandled rejection would show up as a console error on a
+      // page that restored a finished timer on load.
+      var resumed = ctx.resume();
+      if (resumed && typeof resumed.catch === "function") resumed.catch(function () {});
     }
     return ctx;
   }

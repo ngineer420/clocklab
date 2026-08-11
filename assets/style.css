@@ -1002,6 +1002,45 @@ button.ctrl-btn.ghost:hover {
   color: var(--fg-dim);
   text-align: center;
   margin-top: 14px;
+  /* The global p max-width pins this to the left of a wide instrument,
+     which reads as a mistake next to its own text-align: center. */
+  margin-left: auto;
+  margin-right: auto;
+}
+
+/* system-notification opt-in — one shared preference across every timer */
+
+.notify-row {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 8px;
+  margin-top: 18px;
+  font-size: 13px;
+  color: var(--fg-dim);
+}
+
+.notify-row input[type="checkbox"] {
+  width: 15px;
+  height: 15px;
+  accent-color: var(--accent);
+  cursor: pointer;
+  flex: none;
+}
+
+.notify-row label {
+  cursor: pointer;
+}
+
+.notify-state {
+  font-size: 12px;
+  color: var(--fg-dim);
+  text-align: center;
+  margin: 6px auto 0;
+}
+
+.notify-state:empty {
+  display: none;
 }
 
 /* ---------- content sections (per-tool SEO copy) ---------- */
