@@ -71,6 +71,11 @@
         <button type="button" class="ctrl-btn ghost" id="al-cancel" hidden>Cancel Alarm</button>
         <button type="button" class="ctrl-btn stop" id="al-stop" hidden>Stop Alarm</button>
       </div>
+      <div class="notify-row">
+        <input type="checkbox" id="al-notify" data-notify-toggle>
+        <label for="al-notify">Notify me when it rings</label>
+      </div>
+      <p class="notify-state" id="al-notify-state" role="status"></p>
       <p class="hint" id="al-hint">Set a time and tap Set Alarm — this tab must stay open for the alarm to ring.</p>
     </div>
 
@@ -96,7 +101,7 @@
         <h2>FAQ</h2>
         <dl class="faq">
         <dt>Does the alarm ring if I close the tab?</dt>
-        <dd>No — like any browser-based tool, clocklab needs the tab to stay open (it can be in the background) to check the time and ring the alarm. It doesn't run as a background service or send notifications when closed.</dd>
+        <dd>No — like any browser-based tool, clocklab needs the tab to stay open to ring. It can be in the background, though: the time check runs in a Web Worker so a hidden tab keeps checking, and if you tick “Notify me when it rings” you'll get a system notification from whatever you've switched to. If you do close the tab, the alarm is remembered and still armed when you come back.</dd>
         <dt>What if I set a time that's already passed today?</dt>
         <dd>clocklab automatically arms it for that time tomorrow instead, so you never accidentally set an alarm in the past.</dd>
         <dt>What does the red dot on the dial mean?</dt>
@@ -128,9 +133,10 @@
     </div>
   </footer>
 <a href="https://erabb.it" class="erabbit-mark" aria-label="erabb.it"><img src="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐇</text></svg>" width="10" height="10" alt=""></a>
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Does the alarm ring if I close the tab?","acceptedAnswer":{"@type":"Answer","text":"No \u2014 like any browser-based tool, clocklab needs the tab to stay open (it can be in the background) to check the time and ring the alarm. It doesn't run as a background service or send notifications when closed."}},{"@type":"Question","name":"What if I set a time that's already passed today?","acceptedAnswer":{"@type":"Answer","text":"clocklab automatically arms it for that time tomorrow instead, so you never accidentally set an alarm in the past."}},{"@type":"Question","name":"What does the red dot on the dial mean?","acceptedAnswer":{"@type":"Answer","text":"It marks where your alarm time falls on the 12-hour clock face \u2014 a quick visual check that you've set the time you meant to, at a glance."}},{"@type":"Question","name":"Can I have more than one alarm?","acceptedAnswer":{"@type":"Answer","text":"This tool arms one alarm at a time, kept simple on purpose. Use the Countdown Timer alongside it if you need a second, independent alert."}}]}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Does the alarm ring if I close the tab?","acceptedAnswer":{"@type":"Answer","text":"No \u2014 like any browser-based tool, clocklab needs the tab to stay open to ring. It can be in the background, though: the time check runs in a Web Worker so a hidden tab keeps checking, and if you tick \u201cNotify me when it rings\u201d you'll get a system notification from whatever you've switched to. If you do close the tab, the alarm is remembered and still armed when you come back."}},{"@type":"Question","name":"What if I set a time that's already passed today?","acceptedAnswer":{"@type":"Answer","text":"clocklab automatically arms it for that time tomorrow instead, so you never accidentally set an alarm in the past."}},{"@type":"Question","name":"What does the red dot on the dial mean?","acceptedAnswer":{"@type":"Answer","text":"It marks where your alarm time falls on the 12-hour clock face \u2014 a quick visual check that you've set the time you meant to, at a glance."}},{"@type":"Question","name":"Can I have more than one alarm?","acceptedAnswer":{"@type":"Answer","text":"This tool arms one alarm at a time, kept simple on purpose. Use the Countdown Timer alongside it if you need a second, independent alert."}}]}</script>
   <script src="/assets/dial.js"></script>
   <script src="/assets/audio.js"></script>
+  <script src="/assets/timer-core.js"></script>
   <script src="/assets/app.js"></script>
 </body>
 </html>

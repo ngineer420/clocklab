@@ -6,18 +6,32 @@
  * standalone tool page (exactly one panel).
  *
  * Accuracy note: every timer here is driven from wall-clock timestamps
- * (performance.now() / Date.now()), never by counting setInterval ticks.
- * Each render reads "how much time has actually passed" from a stored
- * start timestamp + accumulated offset, so drift from tab throttling,
- * GC pauses, or a slow frame never accumulates — pausing and resuming
- * repeatedly, or backgrounding the tab for a while, still yields the
- * correct remaining/elapsed time on the next render.
+ * (Date.now()), never by counting setInterval ticks. Each render reads
+ * "how much time has actually passed" from a stored start timestamp +
+ * accumulated offset, so drift from tab throttling, GC pauses, or a slow
+ * frame never accumulates — pausing and resuming repeatedly, or
+ * backgrounding the tab for a while, still yields the correct
+ * remaining/elapsed time on the next render.
+ *
+ * Date.now() rather than performance.now() specifically because
+ * performance.now() is measured from *this page load* and is therefore
+ * meaningless to a page that has since been reloaded. An absolute epoch
+ * timestamp survives a refresh, which is what lets a running timer be
+ * written to localStorage and picked back up mid-flight.
+ *
+ * Ticking comes from ClockLabTicker (a shared Web Worker pulse) rather
+ * than requestAnimationFrame alone, because rAF stops dead in a hidden
+ * tab and a countdown that only notices zero when you look at it is not
+ * a countdown.
  */
 (function () {
   "use strict";
 
   var Dial = window.ClockLabDial;
   var Audio = window.ClockLabAudio;
+  var Store = window.ClockLabStore;
+  var Ticker = window.ClockLabTicker;
+  var Notify = window.ClockLabNotify;
 
   function pad2(n) {
     return n < 10 ? "0" + n : "" + n;
@@ -50,7 +64,73 @@
   }
 
   function now() {
-    return performance.now();
+    return Date.now();
+  }
+
+  /* ========================== NOTIFICATIONS ==========================
+   * One shared "alert me" preference across every timer — it is the same
+   * question ("may I interrupt you?"), so answering it once on the
+   * countdown should not have to be answered again on the pomodoro. The
+   * permission prompt is only ever raised from the click that ticks the
+   * box, never on page load. */
+
+  var NOTIFY_KEY = "notify";
+  var notifyOn = false;
+
+  function notifyEnabled() {
+    return notifyOn && Notify && Notify.permission() === "granted";
+  }
+
+  function notify(title, body, tag) {
+    if (!notifyEnabled()) return;
+    Notify.send(title, body, tag);
+  }
+
+  function initNotifyToggles() {
+    var boxes = [].slice.call(document.querySelectorAll("[data-notify-toggle]"));
+    if (!boxes.length || !Notify) return;
+
+    var stored = Store ? Store.load(NOTIFY_KEY) : null;
+    notifyOn = !!(stored && stored.on) && Notify.permission() === "granted";
+
+    function paint() {
+      boxes.forEach(function (box) {
+        box.checked = notifyOn;
+        var state = document.getElementById(box.id + "-state");
+        if (!state) return;
+        if (!Notify.supported()) {
+          state.textContent = "This browser has no notification support.";
+        } else if (Notify.permission() === "denied") {
+          state.textContent = "Blocked — allow notifications for this site in your browser settings.";
+        } else if (notifyOn) {
+          state.textContent = "On — you'll get a system notification even in another tab.";
+        } else {
+          state.textContent = "";
+        }
+      });
+    }
+
+    function setOn(value) {
+      notifyOn = value;
+      if (Store) Store.save(NOTIFY_KEY, { on: value });
+      paint();
+    }
+
+    boxes.forEach(function (box) {
+      box.addEventListener("change", function () {
+        if (!box.checked) {
+          setOn(false);
+          return;
+        }
+        // Asking here, inside the click, is the only place a browser will
+        // reliably show the prompt.
+        Notify.request(function (permission) {
+          setOn(permission === "granted");
+        });
+      });
+    });
+
+    paint();
   }
 
   /* ============================== THEME ============================== */
@@ -165,13 +245,16 @@
     var dialMount = document.getElementById("cd-dial");
     var dial = Dial ? Dial.mount(dialMount, "arc") : null;
 
+    var STORE_KEY = "countdown";
+
     var totalMs = 0;
     var accumulatedMs = 0;
     var startTs = 0;
     var running = false;
     var ringing = false;
-    var rafId = null;
     var alarmHandle = null;
+
+    var ticker = Ticker.create(tick);
 
     function readInputsMs() {
       var h = Math.max(0, Math.min(23, Number(hInput.value) || 0));
@@ -183,6 +266,28 @@
     function remainingMs() {
       var elapsed = accumulatedMs + (running ? now() - startTs : 0);
       return Math.max(0, totalMs - elapsed);
+    }
+
+    // Deliberately stores startTs + totalMs rather than a remaining time:
+    // remaining time computed at save is already wrong by the time the page
+    // comes back, whereas an epoch timestamp stays true no matter how long
+    // the tab was shut.
+    function persist() {
+      if (!Store) return;
+      if (!running && !ringing && accumulatedMs === 0) {
+        Store.clear(STORE_KEY);
+        return;
+      }
+      Store.save(STORE_KEY, {
+        h: hInput.value,
+        m: mInput.value,
+        s: sInput.value,
+        totalMs: totalMs,
+        accumulatedMs: accumulatedMs,
+        startTs: startTs,
+        running: running,
+        ringing: ringing,
+      });
     }
 
     function render() {
@@ -198,29 +303,67 @@
       sInput.disabled = disabled;
     }
 
-    function loop() {
-      if (!running) return;
-      var rem = remainingMs();
+    function tick() {
       render();
-      if (rem <= 0) {
-        finish();
-        return;
-      }
-      rafId = requestAnimationFrame(loop);
+      if (running && remainingMs() <= 0) finish(true);
     }
 
-    function finish() {
+    // `live` is false when we are only discovering, on load, that the
+    // countdown expired while the tab was closed.
+    function finish(live) {
       running = false;
+      ticker.stop();
       accumulatedMs = totalMs;
       ringing = true;
-      statusEl.textContent = "Ringing";
+      statusEl.textContent = live ? "Ringing" : "Finished";
       statusEl.setAttribute("data-state", "ringing");
       startBtn.hidden = true;
       pauseBtn.hidden = true;
       resetBtn.hidden = true;
       stopAlarmBtn.hidden = false;
+      stopAlarmBtn.textContent = live ? "Stop Alarm" : "Dismiss";
       render();
-      alarmHandle = Audio ? Audio.startAlarm() : null;
+      persist();
+      if (live) {
+        alarmHandle = Audio ? Audio.startAlarm() : null;
+        notify("Countdown finished", fmtHMS(totalMs / 1000) + " is up.", "clocklab-countdown");
+      }
+    }
+
+    function setRunningUi() {
+      statusEl.textContent = "Running";
+      statusEl.setAttribute("data-state", "running");
+      startBtn.disabled = true;
+      pauseBtn.disabled = false;
+      setInputsDisabled(true);
+    }
+
+    function setPausedUi() {
+      statusEl.textContent = "Paused";
+      statusEl.setAttribute("data-state", "paused");
+      startBtn.disabled = false;
+      pauseBtn.disabled = true;
+      setInputsDisabled(true);
+    }
+
+    function clearToIdle() {
+      ringing = false;
+      if (alarmHandle) alarmHandle.stop();
+      alarmHandle = null;
+      accumulatedMs = 0;
+      totalMs = readInputsMs();
+      statusEl.textContent = "Idle";
+      statusEl.setAttribute("data-state", "idle");
+      startBtn.hidden = false;
+      pauseBtn.hidden = false;
+      resetBtn.hidden = false;
+      stopAlarmBtn.hidden = true;
+      stopAlarmBtn.textContent = "Stop Alarm";
+      startBtn.disabled = false;
+      pauseBtn.disabled = true;
+      setInputsDisabled(false);
+      if (Store) Store.clear(STORE_KEY);
+      render();
     }
 
     startBtn.addEventListener("click", function () {
@@ -233,73 +376,86 @@
       if (totalMs <= 0) return;
       running = true;
       startTs = now();
-      statusEl.textContent = "Running";
-      statusEl.setAttribute("data-state", "running");
-      startBtn.disabled = true;
-      pauseBtn.disabled = false;
-      setInputsDisabled(true);
-      rafId = requestAnimationFrame(loop);
+      setRunningUi();
+      persist();
+      ticker.start();
     });
 
     pauseBtn.addEventListener("click", function () {
       if (!running) return;
       accumulatedMs += now() - startTs;
       running = false;
-      statusEl.textContent = "Paused";
-      statusEl.setAttribute("data-state", "paused");
-      startBtn.disabled = false;
-      pauseBtn.disabled = true;
-      if (rafId) cancelAnimationFrame(rafId);
+      ticker.stop();
+      setPausedUi();
+      persist();
       render();
     });
 
     resetBtn.addEventListener("click", function () {
       running = false;
-      ringing = false;
-      if (rafId) cancelAnimationFrame(rafId);
-      if (alarmHandle) alarmHandle.stop();
-      accumulatedMs = 0;
-      totalMs = readInputsMs();
-      statusEl.textContent = "Idle";
-      statusEl.setAttribute("data-state", "idle");
-      startBtn.hidden = false;
-      pauseBtn.hidden = false;
-      resetBtn.hidden = false;
-      stopAlarmBtn.hidden = true;
-      startBtn.disabled = false;
-      pauseBtn.disabled = true;
-      setInputsDisabled(false);
-      render();
+      ticker.stop();
+      clearToIdle();
     });
 
-    stopAlarmBtn.addEventListener("click", function () {
-      ringing = false;
-      if (alarmHandle) alarmHandle.stop();
-      startBtn.hidden = false;
-      pauseBtn.hidden = false;
-      resetBtn.hidden = false;
-      stopAlarmBtn.hidden = true;
-      statusEl.textContent = "Idle";
-      statusEl.setAttribute("data-state", "idle");
-      accumulatedMs = 0;
-      totalMs = readInputsMs();
-      pauseBtn.disabled = true;
-      setInputsDisabled(false);
-      render();
-    });
+    stopAlarmBtn.addEventListener("click", clearToIdle);
 
     [hInput, mInput, sInput].forEach(function (input) {
       input.addEventListener("input", function () {
         if (running || ringing) return;
         totalMs = readInputsMs();
         accumulatedMs = 0;
+        persist();
         render();
       });
     });
 
-    totalMs = readInputsMs();
-    pauseBtn.disabled = true;
-    render();
+    function restore() {
+      var s = Store ? Store.load(STORE_KEY) : null;
+      if (!s || !Number(s.totalMs)) return false;
+
+      if (s.h !== undefined) hInput.value = s.h;
+      if (s.m !== undefined) mInput.value = s.m;
+      if (s.s !== undefined) sInput.value = s.s;
+      totalMs = Number(s.totalMs);
+      accumulatedMs = Number(s.accumulatedMs) || 0;
+      startTs = Number(s.startTs) || 0;
+
+      if (s.running && startTs > 0) {
+        running = true;
+        if (remainingMs() > 0) {
+          setRunningUi();
+          ticker.start();
+          render();
+          return true;
+        }
+        // Expired while we were gone. Show it, silently — audio without a
+        // user gesture is blocked anyway, and an alarm that starts mid-blast
+        // on page load is worse than a clear label.
+        finish(false);
+        return true;
+      }
+
+      if (s.ringing) {
+        running = false;
+        finish(false);
+        return true;
+      }
+
+      running = false;
+      if (accumulatedMs > 0) {
+        setPausedUi();
+      } else {
+        pauseBtn.disabled = true;
+      }
+      render();
+      return true;
+    }
+
+    if (!restore()) {
+      totalMs = readInputsMs();
+      pauseBtn.disabled = true;
+      render();
+    }
   }
 
   /* ============================ STOPWATCH (sw-) ============================ */
@@ -315,14 +471,31 @@
     var dialMount = document.getElementById("sw-dial");
     var dial = Dial ? Dial.mount(dialMount, "sweep") : null;
 
+    var STORE_KEY = "stopwatch";
+
     var accumulatedMs = 0;
     var startTs = 0;
     var running = false;
-    var rafId = null;
     var laps = []; // elapsed ms at each lap, in order
+
+    var ticker = Ticker.create(render);
 
     function elapsedMs() {
       return accumulatedMs + (running ? now() - startTs : 0);
+    }
+
+    function persist() {
+      if (!Store) return;
+      if (!running && accumulatedMs === 0 && !laps.length) {
+        Store.clear(STORE_KEY);
+        return;
+      }
+      Store.save(STORE_KEY, {
+        accumulatedMs: accumulatedMs,
+        startTs: startTs,
+        running: running,
+        laps: laps,
+      });
     }
 
     function render() {
@@ -361,12 +534,6 @@
       lapsBody.innerHTML = rows;
     }
 
-    function loop() {
-      if (!running) return;
-      render();
-      rafId = requestAnimationFrame(loop);
-    }
-
     function setState(state) {
       if (state === "idle") {
         statusEl.textContent = "Idle";
@@ -394,15 +561,16 @@
       if (running) {
         accumulatedMs += now() - startTs;
         running = false;
-        if (rafId) cancelAnimationFrame(rafId);
+        ticker.stop();
         render();
         setState("stopped");
       } else {
         running = true;
         startTs = now();
         setState("running");
-        rafId = requestAnimationFrame(loop);
+        ticker.start();
       }
+      persist();
     });
 
     lapBtn.addEventListener("click", function () {
@@ -410,6 +578,7 @@
       if (Audio) Audio.tick();
       laps.push(elapsedMs());
       renderLaps();
+      persist();
     });
 
     resetBtn.addEventListener("click", function () {
@@ -419,11 +588,35 @@
       renderLaps();
       render();
       setState("idle");
+      persist();
     });
 
-    setState("idle");
-    render();
-    renderLaps();
+    function restore() {
+      var s = Store ? Store.load(STORE_KEY) : null;
+      if (!s) return false;
+      accumulatedMs = Number(s.accumulatedMs) || 0;
+      startTs = Number(s.startTs) || 0;
+      laps = Array.isArray(s.laps) ? s.laps : [];
+      running = !!s.running && startTs > 0;
+
+      if (running) {
+        setState("running");
+        ticker.start();
+      } else if (accumulatedMs > 0 || laps.length) {
+        setState("stopped");
+      } else {
+        setState("idle");
+      }
+      render();
+      renderLaps();
+      return true;
+    }
+
+    if (!restore()) {
+      setState("idle");
+      render();
+      renderLaps();
+    }
   }
 
   /* ============================ POMODORO (pd-) ============================ */
@@ -444,13 +637,36 @@
     var dialMount = document.getElementById("pd-dial");
     var dial = Dial ? Dial.mount(dialMount, "arc") : null;
 
+    var STORE_KEY = "pomodoro";
+
     var phase = "work"; // work | break | longbreak
     var sessionIndex = 0; // completed work sessions in current cycle
     var totalMs = 0;
     var accumulatedMs = 0;
     var startTs = 0;
     var running = false;
-    var rafId = null;
+
+    var ticker = Ticker.create(tick);
+
+    function persist() {
+      if (!Store) return;
+      if (!running && accumulatedMs === 0 && sessionIndex === 0 && phase === "work") {
+        Store.clear(STORE_KEY);
+        return;
+      }
+      Store.save(STORE_KEY, {
+        phase: phase,
+        sessionIndex: sessionIndex,
+        totalMs: totalMs,
+        accumulatedMs: accumulatedMs,
+        startTs: startTs,
+        running: running,
+        work: workInput.value,
+        brk: breakInput.value,
+        longBrk: longBreakInput.value,
+        sessions: sessionsInput.value,
+      });
+    }
 
     function cfg() {
       return {
@@ -485,11 +701,15 @@
       return Math.max(0, totalMs - elapsed);
     }
 
+    function phaseTitle(p) {
+      return p === "work" ? "Focus" : p === "break" ? "Short break" : "Long break";
+    }
+
     function render() {
       var rem = remainingMs();
       readout.textContent = fmtMinSec(rem / 1000);
       readout.classList.toggle("is-cyan", phase !== "work");
-      phaseLabel.textContent = phase === "work" ? "Focus" : phase === "break" ? "Short break" : "Long break";
+      phaseLabel.textContent = phaseTitle(phase);
       if (dial) dial.setProgress(totalMs > 0 ? rem / totalMs : 0, phase !== "work" ? "break" : "normal");
     }
 
@@ -501,6 +721,14 @@
 
     function advancePhase(natural) {
       var c = cfg();
+      // Carry the overshoot into the next phase. Resetting the clock to
+      // "now" at every switch would shed a tick's worth of time per phase,
+      // and after a reload the overshoot is the entire interval we were
+      // away for — which is exactly what has to be replayed to land on the
+      // phase the user should actually be in.
+      var overshoot = Math.max(0, accumulatedMs + (running ? now() - startTs : 0) - totalMs);
+      var from = phase;
+
       if (phase === "work") {
         sessionIndex++;
         phase = sessionIndex >= c.sessions ? "longbreak" : "break";
@@ -511,21 +739,32 @@
         phase = "work";
       }
       totalMs = phaseDurationMs(phase);
-      accumulatedMs = 0;
+      accumulatedMs = running ? overshoot : 0;
       startTs = now();
-      if (natural && Audio) Audio.chime();
+      if (natural) {
+        if (Audio) Audio.chime();
+        notify(
+          phaseTitle(from) + " done",
+          "Next up: " + phaseTitle(phase).toLowerCase() + ", " + Math.round(totalMs / 60000) + " min.",
+          "clocklab-pomodoro"
+        );
+      }
       renderPips();
       render();
     }
 
-    function loop() {
-      if (!running) return;
-      var rem = remainingMs();
-      render();
-      if (rem <= 0) {
-        advancePhase(true);
+    function tick() {
+      // A loop, not an `if`: after a reload or a long stretch in a hidden
+      // tab, several phases may have come and gone at once.
+      var guard = 0;
+      while (running && remainingMs() <= 0 && guard++ < 500) {
+        var overshoot = accumulatedMs + (now() - startTs) - totalMs;
+        // Only a switch that happened just now deserves a chime. The ones
+        // being replayed after the fact already went unheard.
+        advancePhase(overshoot < 1500);
       }
-      rafId = requestAnimationFrame(loop);
+      render();
+      if (guard > 0) persist();
     }
 
     startBtn.addEventListener("click", function () {
@@ -539,7 +778,8 @@
       startBtn.disabled = true;
       pauseBtn.disabled = false;
       setInputsDisabled(true);
-      rafId = requestAnimationFrame(loop);
+      persist();
+      ticker.start();
     });
 
     pauseBtn.addEventListener("click", function () {
@@ -550,24 +790,21 @@
       statusEl.setAttribute("data-state", "paused");
       startBtn.disabled = false;
       pauseBtn.disabled = true;
-      if (rafId) cancelAnimationFrame(rafId);
+      ticker.stop();
+      persist();
       render();
     });
 
     skipBtn.addEventListener("click", function () {
-      var wasRunning = running;
-      if (running) accumulatedMs += now() - startTs;
+      // advancePhase already folds the running time in; adding it here too
+      // would count the current phase twice.
       advancePhase(false);
-      if (wasRunning) {
-        running = true;
-        startTs = now();
-        rafId = requestAnimationFrame(loop);
-      }
+      persist();
     });
 
     resetBtn.addEventListener("click", function () {
       running = false;
-      if (rafId) cancelAnimationFrame(rafId);
+      ticker.stop();
       phase = "work";
       sessionIndex = 0;
       accumulatedMs = 0;
@@ -577,6 +814,7 @@
       startBtn.disabled = false;
       pauseBtn.disabled = true;
       setInputsDisabled(false);
+      if (Store) Store.clear(STORE_KEY);
       renderPips();
       render();
     });
@@ -587,13 +825,55 @@
         totalMs = phaseDurationMs(phase);
         renderPips();
         render();
+        persist();
       });
     });
 
-    totalMs = phaseDurationMs("work");
-    pauseBtn.disabled = true;
-    renderPips();
-    render();
+    function restore() {
+      var s = Store ? Store.load(STORE_KEY) : null;
+      if (!s || !Number(s.totalMs)) return false;
+
+      if (s.work !== undefined) workInput.value = s.work;
+      if (s.brk !== undefined) breakInput.value = s.brk;
+      if (s.longBrk !== undefined) longBreakInput.value = s.longBrk;
+      if (s.sessions !== undefined) sessionsInput.value = s.sessions;
+
+      phase = s.phase === "break" || s.phase === "longbreak" ? s.phase : "work";
+      sessionIndex = Number(s.sessionIndex) || 0;
+      totalMs = Number(s.totalMs);
+      accumulatedMs = Number(s.accumulatedMs) || 0;
+      startTs = Number(s.startTs) || 0;
+      running = !!s.running && startTs > 0;
+
+      if (running) {
+        statusEl.textContent = "Running";
+        statusEl.setAttribute("data-state", "running");
+        startBtn.disabled = true;
+        pauseBtn.disabled = false;
+        setInputsDisabled(true);
+        renderPips();
+        // Replays every phase boundary crossed while we were away, then
+        // renders the phase the clock says we are actually in.
+        tick();
+        ticker.start();
+      } else {
+        statusEl.textContent = "Paused";
+        statusEl.setAttribute("data-state", "paused");
+        startBtn.disabled = false;
+        pauseBtn.disabled = true;
+        setInputsDisabled(true);
+        renderPips();
+        render();
+      }
+      return true;
+    }
+
+    if (!restore()) {
+      totalMs = phaseDurationMs("work");
+      pauseBtn.disabled = true;
+      renderPips();
+      render();
+    }
   }
 
   /* ============================ ALARM CLOCK (al-) ============================ */
@@ -610,17 +890,36 @@
     var dialMount = document.getElementById("al-dial");
     var dial = Dial ? Dial.mount(dialMount, "clock") : null;
 
+    var STORE_KEY = "alarm";
+    var IDLE_HINT = "Set a time and tap Set Alarm — this tab must stay open for the alarm to ring.";
+
     var targetTs = null;
     var armed = false;
     var ringing = false;
     var alarmHandle = null;
-    var intervalId = null;
+
+    // smooth:false — this readout changes once a second and the hands once
+    // a minute; a frame-rate pulse would buy nothing but battery drain.
+    var ticker = Ticker.create(tick, { smooth: false });
 
     function defaultTimeString() {
       var d = new Date(Date.now() + 5 * 60000);
       return pad2(d.getHours()) + ":" + pad2(d.getMinutes());
     }
     timeInput.value = defaultTimeString();
+
+    function persist() {
+      if (!Store) return;
+      if (!armed) {
+        Store.clear(STORE_KEY);
+        return;
+      }
+      Store.save(STORE_KEY, {
+        targetTs: targetTs,
+        time: timeInput.value,
+        repeat: !!repeatInput.checked,
+      });
+    }
 
     function updateHands(d) {
       if (!dial) return;
@@ -636,20 +935,58 @@
       readout.textContent = pad2(nowDate.getHours()) + ":" + pad2(nowDate.getMinutes()) + ":" + pad2(nowDate.getSeconds());
       updateHands(nowDate);
       if (armed && !ringing && targetTs !== null && Date.now() >= targetTs) {
-        ring();
+        ring(true);
       }
     }
 
-    function ring() {
+    // `live` is false when we are only discovering, on load, that the alarm
+    // time went by while the tab was shut.
+    function ring(live) {
       ringing = true;
-      statusEl.textContent = "Ringing";
+      statusEl.textContent = live ? "Ringing" : "Alarm passed";
       statusEl.setAttribute("data-state", "ringing");
       readout.classList.add("is-ringing");
       armBtn.hidden = true;
       cancelBtn.hidden = true;
       stopBtn.hidden = false;
-      hintEl.textContent = "Alarm! Tap Stop to dismiss.";
-      alarmHandle = Audio ? Audio.startAlarm() : null;
+      if (live) {
+        stopBtn.textContent = "Stop Alarm";
+        hintEl.textContent = "Alarm! Tap Stop to dismiss.";
+        alarmHandle = Audio ? Audio.startAlarm() : null;
+        var d = new Date(targetTs);
+        notify("Alarm — " + pad2(d.getHours()) + ":" + pad2(d.getMinutes()), "clocklab alarm clock.", "clocklab-alarm");
+      } else {
+        stopBtn.textContent = "Dismiss";
+        hintEl.textContent = "This alarm came due while the page was closed, so it could not ring.";
+      }
+    }
+
+    function setArmed(h, m) {
+      statusEl.textContent = "Armed for " + pad2(h) + ":" + pad2(m);
+      statusEl.setAttribute("data-state", "armed");
+      armBtn.hidden = true;
+      cancelBtn.hidden = false;
+      cancelBtn.disabled = false;
+      stopBtn.hidden = true;
+      timeInput.disabled = true;
+      if (dial) dial.setMarker(((h % 12) + m / 60) * 30);
+    }
+
+    function disarm() {
+      armed = false;
+      ringing = false;
+      targetTs = null;
+      statusEl.textContent = "No alarm set";
+      statusEl.setAttribute("data-state", "idle");
+      armBtn.hidden = false;
+      cancelBtn.hidden = true;
+      stopBtn.hidden = true;
+      stopBtn.textContent = "Stop Alarm";
+      timeInput.disabled = false;
+      readout.classList.remove("is-ringing");
+      hintEl.textContent = IDLE_HINT;
+      if (dial) dial.clearMarker();
+      if (Store) Store.clear(STORE_KEY);
     }
 
     armBtn.addEventListener("click", function () {
@@ -666,55 +1003,69 @@
       }
       targetTs = target.getTime();
       armed = true;
-      statusEl.textContent = "Armed for " + pad2(h) + ":" + pad2(m);
-      statusEl.setAttribute("data-state", "armed");
-      armBtn.hidden = true;
-      cancelBtn.hidden = false;
-      cancelBtn.disabled = false;
-      timeInput.disabled = true;
-      hintEl.textContent = "This tab must stay open for the alarm to ring.";
-      if (dial) dial.setMarker(((h % 12) + m / 60) * 30);
+      setArmed(h, m);
+      hintEl.textContent = "Armed. Leave this tab open — turn on notifications above to be told even from another tab.";
+      persist();
     });
 
-    cancelBtn.addEventListener("click", function () {
-      armed = false;
-      targetTs = null;
-      statusEl.textContent = "No alarm set";
-      statusEl.setAttribute("data-state", "idle");
-      armBtn.hidden = false;
-      cancelBtn.hidden = true;
-      timeInput.disabled = false;
-      hintEl.textContent = "Set a time and tap Set Alarm — this tab must stay open for the alarm to ring.";
-      if (dial) dial.clearMarker();
-    });
+    cancelBtn.addEventListener("click", disarm);
 
     stopBtn.addEventListener("click", function () {
       ringing = false;
       if (alarmHandle) alarmHandle.stop();
+      alarmHandle = null;
       readout.classList.remove("is-ringing");
-      stopBtn.hidden = true;
       if (repeatInput.checked && targetTs !== null) {
-        targetTs += 24 * 60 * 60 * 1000;
+        // Roll forward past however many days went by, not just one.
+        var dayMs = 24 * 60 * 60 * 1000;
+        do {
+          targetTs += dayMs;
+        } while (targetTs <= Date.now());
         var d = new Date(targetTs);
-        statusEl.textContent = "Armed for " + pad2(d.getHours()) + ":" + pad2(d.getMinutes());
-        statusEl.setAttribute("data-state", "armed");
-        cancelBtn.hidden = false;
+        setArmed(d.getHours(), d.getMinutes());
         hintEl.textContent = "Repeats daily — this tab must stay open for the alarm to ring.";
+        persist();
       } else {
-        armed = false;
-        targetTs = null;
-        statusEl.textContent = "No alarm set";
-        statusEl.setAttribute("data-state", "idle");
-        armBtn.hidden = false;
-        cancelBtn.hidden = true;
-        timeInput.disabled = false;
-        hintEl.textContent = "Set a time and tap Set Alarm — this tab must stay open for the alarm to ring.";
-        if (dial) dial.clearMarker();
+        disarm();
       }
     });
 
+    repeatInput.addEventListener("change", persist);
+
+    function restore() {
+      var s = Store ? Store.load(STORE_KEY) : null;
+      if (!s || !Number(s.targetTs)) return false;
+      if (s.time) timeInput.value = s.time;
+      repeatInput.checked = !!s.repeat;
+      targetTs = Number(s.targetTs);
+      armed = true;
+
+      if (targetTs > Date.now()) {
+        var d = new Date(targetTs);
+        setArmed(d.getHours(), d.getMinutes());
+        hintEl.textContent = "Still armed from earlier — this tab must stay open for the alarm to ring.";
+        return true;
+      }
+
+      if (repeatInput.checked) {
+        var dayMs = 24 * 60 * 60 * 1000;
+        do {
+          targetTs += dayMs;
+        } while (targetTs <= Date.now());
+        var next = new Date(targetTs);
+        setArmed(next.getHours(), next.getMinutes());
+        hintEl.textContent = "Repeats daily — re-armed for the next occurrence.";
+        persist();
+        return true;
+      }
+
+      ring(false);
+      return true;
+    }
+
+    restore();
     tick();
-    intervalId = window.setInterval(tick, 250);
+    ticker.start();
   }
 
   /* ============================ INTERVAL TIMER (iv-) ============================ */
@@ -733,6 +1084,7 @@
     var dialMount = document.getElementById("iv-dial");
     var dial = Dial ? Dial.mount(dialMount, "arc") : null;
 
+    var STORE_KEY = "interval";
     var PREP_MS = 5000;
     var phase = "work"; // prep | work | rest | done
     var round = 1;
@@ -740,8 +1092,29 @@
     var accumulatedMs = 0;
     var startTs = 0;
     var running = false;
-    var rafId = null;
     var everStarted = false;
+
+    var ticker = Ticker.create(tick);
+
+    function persist() {
+      if (!Store) return;
+      if (!everStarted) {
+        Store.clear(STORE_KEY);
+        return;
+      }
+      Store.save(STORE_KEY, {
+        phase: phase,
+        round: round,
+        totalMs: totalMs,
+        accumulatedMs: accumulatedMs,
+        startTs: startTs,
+        running: running,
+        everStarted: everStarted,
+        work: workInput.value,
+        rest: restInput.value,
+        rounds: roundsInput.value,
+      });
+    }
 
     function cfg() {
       return {
@@ -797,31 +1170,48 @@
       });
     }
 
-    function advance() {
+    function advance(natural) {
       var c = cfg();
+      // Same overshoot-carrying rule as the pomodoro: the leftover past
+      // zero belongs to the next phase, so a 20-second round stays a
+      // 20-second round however coarse the pulse driving it is.
+      var overshoot = Math.max(0, accumulatedMs + (running ? now() - startTs : 0) - totalMs);
+
       if (phase === "prep") {
         phase = "work";
-        if (Audio) Audio.chime();
+        if (natural) {
+          if (Audio) Audio.chime();
+          notify("Round 1 — work", cfg().work + " seconds. Go.", "clocklab-interval");
+        }
       } else if (phase === "work") {
         if (round >= c.rounds) {
           phase = "done";
-          if (Audio) {
-            Audio.chime();
-            window.setTimeout(function () {
+          if (natural) {
+            if (Audio) {
               Audio.chime();
-            }, 260);
+              window.setTimeout(function () {
+                Audio.chime();
+              }, 260);
+            }
+            notify("Interval workout done", c.rounds + " rounds complete.", "clocklab-interval");
           }
         } else {
           phase = "rest";
-          if (Audio) Audio.chime();
+          if (natural) {
+            if (Audio) Audio.chime();
+            notify("Rest", c.rest + " seconds before round " + (round + 1) + ".", "clocklab-interval");
+          }
         }
       } else if (phase === "rest") {
         round++;
         phase = "work";
-        if (Audio) Audio.chime();
+        if (natural) {
+          if (Audio) Audio.chime();
+          notify("Round " + round + " — work", c.work + " seconds. Go.", "clocklab-interval");
+        }
       }
       totalMs = phaseDurationMs(phase);
-      accumulatedMs = 0;
+      accumulatedMs = running && phase !== "done" ? overshoot : 0;
       startTs = now();
       renderPips();
       render();
@@ -833,19 +1223,18 @@
         startBtn.textContent = "Restart";
         pauseBtn.disabled = true;
         setInputsDisabled(false);
-        if (rafId) cancelAnimationFrame(rafId);
+        ticker.stop();
       }
     }
 
-    function loop() {
-      if (!running) return;
-      var rem = remainingMs();
-      render();
-      if (rem <= 0) {
-        advance();
-        if (!running) return;
+    function tick() {
+      var guard = 0;
+      while (running && remainingMs() <= 0 && guard++ < 500) {
+        var overshoot = accumulatedMs + (now() - startTs) - totalMs;
+        advance(overshoot < 1500);
       }
-      rafId = requestAnimationFrame(loop);
+      render();
+      if (guard > 0) persist();
     }
 
     startBtn.addEventListener("click", function () {
@@ -867,7 +1256,8 @@
       pauseBtn.disabled = false;
       setInputsDisabled(true);
       renderPips();
-      rafId = requestAnimationFrame(loop);
+      persist();
+      ticker.start();
     });
 
     pauseBtn.addEventListener("click", function () {
@@ -878,13 +1268,14 @@
       statusEl.setAttribute("data-state", "paused");
       startBtn.disabled = false;
       pauseBtn.disabled = true;
-      if (rafId) cancelAnimationFrame(rafId);
+      ticker.stop();
+      persist();
       render();
     });
 
     resetBtn.addEventListener("click", function () {
       running = false;
-      if (rafId) cancelAnimationFrame(rafId);
+      ticker.stop();
       phase = "work";
       round = 1;
       everStarted = false;
@@ -896,6 +1287,7 @@
       startBtn.textContent = "Start";
       pauseBtn.disabled = true;
       setInputsDisabled(false);
+      if (Store) Store.clear(STORE_KEY);
       renderPips();
       render();
     });
@@ -906,13 +1298,59 @@
         if (phase === "work" && !everStarted) totalMs = phaseDurationMs("work");
         renderPips();
         render();
+        persist();
       });
     });
 
-    totalMs = phaseDurationMs("work");
-    pauseBtn.disabled = true;
-    renderPips();
-    render();
+    function restore() {
+      var s = Store ? Store.load(STORE_KEY) : null;
+      if (!s || !s.everStarted) return false;
+
+      if (s.work !== undefined) workInput.value = s.work;
+      if (s.rest !== undefined) restInput.value = s.rest;
+      if (s.rounds !== undefined) roundsInput.value = s.rounds;
+
+      phase = ["prep", "work", "rest", "done"].indexOf(s.phase) !== -1 ? s.phase : "work";
+      round = Number(s.round) || 1;
+      totalMs = Number(s.totalMs) || phaseDurationMs(phase);
+      accumulatedMs = Number(s.accumulatedMs) || 0;
+      startTs = Number(s.startTs) || 0;
+      everStarted = true;
+      running = !!s.running && startTs > 0 && phase !== "done";
+
+      if (running) {
+        statusEl.textContent = "Running";
+        statusEl.setAttribute("data-state", "running");
+        startBtn.disabled = true;
+        pauseBtn.disabled = false;
+        setInputsDisabled(true);
+        renderPips();
+        tick();
+        if (running) ticker.start();
+      } else if (phase === "done") {
+        statusEl.textContent = "Done";
+        statusEl.setAttribute("data-state", "idle");
+        startBtn.textContent = "Restart";
+        pauseBtn.disabled = true;
+        renderPips();
+        render();
+      } else {
+        statusEl.textContent = "Paused";
+        statusEl.setAttribute("data-state", "paused");
+        pauseBtn.disabled = true;
+        setInputsDisabled(true);
+        renderPips();
+        render();
+      }
+      return true;
+    }
+
+    if (!restore()) {
+      totalMs = phaseDurationMs("work");
+      pauseBtn.disabled = true;
+      renderPips();
+      render();
+    }
   }
 
   /* ============================ WORLD CLOCK (wc-) ============================ */
@@ -1097,6 +1535,7 @@
   document.addEventListener("DOMContentLoaded", function () {
     initTheme();
     initMobileNav();
+    initNotifyToggles();
     initPanelSwitching();
     initCountdown();
     initStopwatch();

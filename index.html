@@ -117,7 +117,12 @@
         <button type="button" class="ctrl-btn ghost" id="cd-reset">Reset</button>
         <button type="button" class="ctrl-btn stop" id="cd-stop-alarm" hidden>Stop Alarm</button>
       </div>
-      <p class="hint">Ends with an audible alarm — keep this tab's sound unmuted.</p>
+      <div class="notify-row">
+        <input type="checkbox" id="cd-notify" data-notify-toggle>
+        <label for="cd-notify">Notify me when it's done</label>
+      </div>
+      <p class="notify-state" id="cd-notify-state" role="status"></p>
+      <p class="hint">Ends with an audible alarm — keep this tab's sound unmuted. A running countdown keeps counting in a background tab and picks itself back up if you reload.</p>
     </div>
 
         <p style="margin-top:16px;font-size:14px"><a href="/countdown-timer/#how-it-works">Full guide &amp; FAQ for the Countdown Timer →</a></p>
@@ -193,7 +198,12 @@
         <button type="button" class="ctrl-btn ghost" id="pd-skip">Skip phase</button>
         <button type="button" class="ctrl-btn ghost" id="pd-reset">Reset</button>
       </div>
-      <p class="hint">Chimes softly between focus and break — nothing to dismiss.</p>
+      <div class="notify-row">
+        <input type="checkbox" id="pd-notify" data-notify-toggle>
+        <label for="pd-notify">Notify me at every phase change</label>
+      </div>
+      <p class="notify-state" id="pd-notify-state" role="status"></p>
+      <p class="hint">Chimes softly between focus and break — nothing to dismiss. The cycle keeps running in a background tab and resumes where the clock says it should if you reload.</p>
     </div>
 
         <p style="margin-top:16px;font-size:14px"><a href="/pomodoro-timer/#how-it-works">Full guide &amp; FAQ for the Pomodoro Timer →</a></p>
@@ -230,6 +240,11 @@
         <button type="button" class="ctrl-btn ghost" id="al-cancel" hidden>Cancel Alarm</button>
         <button type="button" class="ctrl-btn stop" id="al-stop" hidden>Stop Alarm</button>
       </div>
+      <div class="notify-row">
+        <input type="checkbox" id="al-notify" data-notify-toggle>
+        <label for="al-notify">Notify me when it rings</label>
+      </div>
+      <p class="notify-state" id="al-notify-state" role="status"></p>
       <p class="hint" id="al-hint">Set a time and tap Set Alarm — this tab must stay open for the alarm to ring.</p>
     </div>
 
@@ -267,7 +282,12 @@
         <button type="button" class="ctrl-btn" id="iv-pause" disabled>Pause</button>
         <button type="button" class="ctrl-btn ghost" id="iv-reset">Reset</button>
       </div>
-      <p class="hint">Starts with a 5-second get-ready countdown, then alternates work and rest.</p>
+      <div class="notify-row">
+        <input type="checkbox" id="iv-notify" data-notify-toggle>
+        <label for="iv-notify">Notify me at every round change</label>
+      </div>
+      <p class="notify-state" id="iv-notify-state" role="status"></p>
+      <p class="hint">Starts with a 5-second get-ready countdown, then alternates work and rest. Keeps running in a background tab and picks itself back up if you reload.</p>
     </div>
 
         <p style="margin-top:16px;font-size:14px"><a href="/interval-timer/#how-it-works">Full guide &amp; FAQ for the Interval Timer →</a></p>
@@ -309,6 +329,7 @@
 <a href="https://erabb.it" class="erabbit-mark" aria-label="erabb.it"><img src="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐇</text></svg>" width="10" height="10" alt=""></a>
   <script src="/assets/dial.js"></script>
   <script src="/assets/audio.js"></script>
+  <script src="/assets/timer-core.js"></script>
   <script src="/assets/app.js"></script>
 </body>
 </html>

@@ -19,7 +19,7 @@ import json
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 SITE = "https://clocklab.net"
-TODAY = "2026-07-18"
+TODAY = "2026-08-10"
 
 # ---------------------------------------------------------------- tools --
 
@@ -38,9 +38,10 @@ TOOLS = [
             "When it reaches zero, the display flashes red and an alarm sounds — tap Stop Alarm to dismiss it, or Reset to set a new time.",
         ],
         faq=[
-            ("Does the timer drift if my laptop is busy or the tab is in the background?", "No — clocklab reads the actual elapsed time from a timestamp each time it renders, rather than counting down once per interval tick. Even if the browser throttles a backgrounded tab, the next render catches up to the correct remaining time instead of losing seconds."),
-            ("Why can't I hear the alarm?", "Browsers require a user gesture before they'll play audio. Tapping Start unlocks sound for the page, so as long as you've interacted with the timer at least once and your device isn't muted, the alarm will play."),
-            ("Can I pause partway through and come back later?", "Yes — Pause holds the exact remaining time. The tab needs to stay open, but you can switch to another tool or tab and the countdown won't lose its place."),
+            ("Does the timer drift if my laptop is busy or the tab is in the background?", "No — clocklab reads the actual elapsed time from a timestamp each time it renders, rather than counting down once per interval tick. The ticking itself runs in a Web Worker, which browsers throttle far less aggressively than a hidden tab's normal timers, so a backgrounded countdown still notices zero and rings on time."),
+            ("Why can't I hear the alarm?", "Browsers require a user gesture before they'll play audio. Tapping Start unlocks sound for the page, so as long as you've interacted with the timer at least once and your device isn't muted, the alarm will play. If you're likely to be in another tab or another app when it ends, tick “Notify me when it's done” — that posts a system notification, which reaches you even when the sound doesn't."),
+            ("What happens if I reload the page mid-countdown?", "It resumes. clocklab saves the countdown's start timestamp and its total duration to your browser's local storage, so on reload it works out the remaining time against the real clock rather than from wherever the on-screen counter had got to. If the countdown ran out while the page was closed, it says so on load instead of pretending it's still going."),
+            ("Can I pause partway through and come back later?", "Yes — Pause holds the exact remaining time, and it survives a reload or a browser restart too. Switching to another tool, another tab or another app doesn't lose the countdown's place."),
             ("Is there a maximum duration?", "Up to 23 hours, 59 minutes and 59 seconds in one countdown — plenty for cooking, workouts, presentations or focus blocks."),
         ],
         related=["pomodoro-timer", "interval-timer", "alarm-clock"],
@@ -68,7 +69,12 @@ TOOLS = [
         <button type="button" class="ctrl-btn ghost" id="cd-reset">Reset</button>
         <button type="button" class="ctrl-btn stop" id="cd-stop-alarm" hidden>Stop Alarm</button>
       </div>
-      <p class="hint">Ends with an audible alarm — keep this tab's sound unmuted.</p>
+      <div class="notify-row">
+        <input type="checkbox" id="cd-notify" data-notify-toggle>
+        <label for="cd-notify">Notify me when it's done</label>
+      </div>
+      <p class="notify-state" id="cd-notify-state" role="status"></p>
+      <p class="hint">Ends with an audible alarm — keep this tab's sound unmuted. A running countdown keeps counting in a background tab and picks itself back up if you reload.</p>
     </div>
 """,
     ),
@@ -138,6 +144,7 @@ TOOLS = [
             ("Can I change the lengths mid-session?", "The number fields are editable any time the timer isn't running; changes take effect the next time you start or on the next phase change. They're locked while a phase is actively counting down to avoid accidentally resetting your progress."),
             ("What's the difference between a short and long break?", "Short breaks happen after every focus session; the long break replaces a short break once you've completed the configured number of sessions (4, by default) — the classic Pomodoro rhythm."),
             ("Does Skip phase count against my session total?", "Yes — skipping advances the cycle exactly like a natural phase completion, just without waiting out the clock or playing the completion chime."),
+            ("Will it keep going if I switch tabs or reload?", "Both. The countdown runs in a Web Worker, so a hidden tab keeps switching phases on time rather than freezing until you look at it, and ticking “Notify me at every phase change” posts a system notification so you actually hear about it. The running cycle is also saved to local storage — reload mid-session and clocklab works out from the clock which phase you should be in now, and drops you there."),
         ],
         related=["interval-timer", "countdown-timer", "stopwatch"],
         workspace="""
@@ -166,7 +173,12 @@ TOOLS = [
         <button type="button" class="ctrl-btn ghost" id="pd-skip">Skip phase</button>
         <button type="button" class="ctrl-btn ghost" id="pd-reset">Reset</button>
       </div>
-      <p class="hint">Chimes softly between focus and break — nothing to dismiss.</p>
+      <div class="notify-row">
+        <input type="checkbox" id="pd-notify" data-notify-toggle>
+        <label for="pd-notify">Notify me at every phase change</label>
+      </div>
+      <p class="notify-state" id="pd-notify-state" role="status"></p>
+      <p class="hint">Chimes softly between focus and break — nothing to dismiss. The cycle keeps running in a background tab and resumes where the clock says it should if you reload.</p>
     </div>
 """,
     ),
@@ -184,7 +196,7 @@ TOOLS = [
             "Tap Stop Alarm to dismiss it — check Repeat daily first if you want it to automatically re-arm for the same time tomorrow.",
         ],
         faq=[
-            ("Does the alarm ring if I close the tab?", "No — like any browser-based tool, clocklab needs the tab to stay open (it can be in the background) to check the time and ring the alarm. It doesn't run as a background service or send notifications when closed."),
+            ("Does the alarm ring if I close the tab?", "No — like any browser-based tool, clocklab needs the tab to stay open to ring. It can be in the background, though: the time check runs in a Web Worker so a hidden tab keeps checking, and if you tick “Notify me when it rings” you'll get a system notification from whatever you've switched to. If you do close the tab, the alarm is remembered and still armed when you come back."),
             ("What if I set a time that's already passed today?", "clocklab automatically arms it for that time tomorrow instead, so you never accidentally set an alarm in the past."),
             ("What does the red dot on the dial mean?", "It marks where your alarm time falls on the 12-hour clock face — a quick visual check that you've set the time you meant to, at a glance."),
             ("Can I have more than one alarm?", "This tool arms one alarm at a time, kept simple on purpose. Use the Countdown Timer alongside it if you need a second, independent alert."),
@@ -214,6 +226,11 @@ TOOLS = [
         <button type="button" class="ctrl-btn ghost" id="al-cancel" hidden>Cancel Alarm</button>
         <button type="button" class="ctrl-btn stop" id="al-stop" hidden>Stop Alarm</button>
       </div>
+      <div class="notify-row">
+        <input type="checkbox" id="al-notify" data-notify-toggle>
+        <label for="al-notify">Notify me when it rings</label>
+      </div>
+      <p class="notify-state" id="al-notify-state" role="status"></p>
       <p class="hint" id="al-hint">Set a time and tap Set Alarm — this tab must stay open for the alarm to ring.</p>
     </div>
 """,
@@ -236,6 +253,7 @@ TOOLS = [
             ("Does Rest count as part of the round?", "Yes — each round is one Work phase followed by one Rest phase (except the very last round, which ends after Work with no trailing rest)."),
             ("Can I pause mid-round?", "Yes — Pause holds the exact remaining time in the current phase; Start resumes it from exactly there."),
             ("How is this different from the Pomodoro Timer?", "Pomodoro is built around longer focus/break cycles (minutes) with a long-break rhythm for deep work; the Interval Timer is built around short work/rest bursts (seconds) for a fixed number of rounds — classic HIIT structure."),
+            ("What if I lock my phone or switch apps mid-workout?", "The rounds are driven by a Web Worker reading the real clock, so the timer keeps advancing rather than freezing when the tab goes to the background, and it picks up mid-workout if the page reloads. Tick “Notify me at every round change” to get a system notification at each switch — useful when the screen is off."),
         ],
         related=["pomodoro-timer", "stopwatch", "countdown-timer"],
         workspace="""
@@ -262,7 +280,12 @@ TOOLS = [
         <button type="button" class="ctrl-btn" id="iv-pause" disabled>Pause</button>
         <button type="button" class="ctrl-btn ghost" id="iv-reset">Reset</button>
       </div>
-      <p class="hint">Starts with a 5-second get-ready countdown, then alternates work and rest.</p>
+      <div class="notify-row">
+        <input type="checkbox" id="iv-notify" data-notify-toggle>
+        <label for="iv-notify">Notify me at every round change</label>
+      </div>
+      <p class="notify-state" id="iv-notify-state" role="status"></p>
+      <p class="hint">Starts with a 5-second get-ready countdown, then alternates work and rest. Keeps running in a background tab and picks itself back up if you reload.</p>
     </div>
 """,
     ),
@@ -399,7 +422,12 @@ def head(title, description, canonical_path, json_ld):
 
 
 def scripts_tail():
-    return '  <script src="/assets/dial.js"></script>\n  <script src="/assets/audio.js"></script>\n  <script src="/assets/app.js"></script>'
+    return (
+        '  <script src="/assets/dial.js"></script>\n'
+        '  <script src="/assets/audio.js"></script>\n'
+        '  <script src="/assets/timer-core.js"></script>\n'
+        '  <script src="/assets/app.js"></script>'
+    )
 
 
 def write(path, content):

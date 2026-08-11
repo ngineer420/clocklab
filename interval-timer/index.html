@@ -71,7 +71,12 @@
         <button type="button" class="ctrl-btn" id="iv-pause" disabled>Pause</button>
         <button type="button" class="ctrl-btn ghost" id="iv-reset">Reset</button>
       </div>
-      <p class="hint">Starts with a 5-second get-ready countdown, then alternates work and rest.</p>
+      <div class="notify-row">
+        <input type="checkbox" id="iv-notify" data-notify-toggle>
+        <label for="iv-notify">Notify me at every round change</label>
+      </div>
+      <p class="notify-state" id="iv-notify-state" role="status"></p>
+      <p class="hint">Starts with a 5-second get-ready countdown, then alternates work and rest. Keeps running in a background tab and picks itself back up if you reload.</p>
     </div>
 
       </div>
@@ -103,6 +108,8 @@
         <dd>Yes — Pause holds the exact remaining time in the current phase; Start resumes it from exactly there.</dd>
         <dt>How is this different from the Pomodoro Timer?</dt>
         <dd>Pomodoro is built around longer focus/break cycles (minutes) with a long-break rhythm for deep work; the Interval Timer is built around short work/rest bursts (seconds) for a fixed number of rounds — classic HIIT structure.</dd>
+        <dt>What if I lock my phone or switch apps mid-workout?</dt>
+        <dd>The rounds are driven by a Web Worker reading the real clock, so the timer keeps advancing rather than freezing when the tab goes to the background, and it picks up mid-workout if the page reloads. Tick “Notify me at every round change” to get a system notification at each switch — useful when the screen is off.</dd>
         </dl>
       </div>
     </section>
@@ -128,9 +135,10 @@
     </div>
   </footer>
 <a href="https://erabb.it" class="erabbit-mark" aria-label="erabb.it"><img src="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐇</text></svg>" width="10" height="10" alt=""></a>
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"What's the get-ready countdown for?","acceptedAnswer":{"@type":"Answer","text":"A fixed 5-second buffer after you tap Start, before round one's work phase begins \u2014 enough time to get off your phone and into position."}},{"@type":"Question","name":"Does Rest count as part of the round?","acceptedAnswer":{"@type":"Answer","text":"Yes \u2014 each round is one Work phase followed by one Rest phase (except the very last round, which ends after Work with no trailing rest)."}},{"@type":"Question","name":"Can I pause mid-round?","acceptedAnswer":{"@type":"Answer","text":"Yes \u2014 Pause holds the exact remaining time in the current phase; Start resumes it from exactly there."}},{"@type":"Question","name":"How is this different from the Pomodoro Timer?","acceptedAnswer":{"@type":"Answer","text":"Pomodoro is built around longer focus/break cycles (minutes) with a long-break rhythm for deep work; the Interval Timer is built around short work/rest bursts (seconds) for a fixed number of rounds \u2014 classic HIIT structure."}}]}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"What's the get-ready countdown for?","acceptedAnswer":{"@type":"Answer","text":"A fixed 5-second buffer after you tap Start, before round one's work phase begins \u2014 enough time to get off your phone and into position."}},{"@type":"Question","name":"Does Rest count as part of the round?","acceptedAnswer":{"@type":"Answer","text":"Yes \u2014 each round is one Work phase followed by one Rest phase (except the very last round, which ends after Work with no trailing rest)."}},{"@type":"Question","name":"Can I pause mid-round?","acceptedAnswer":{"@type":"Answer","text":"Yes \u2014 Pause holds the exact remaining time in the current phase; Start resumes it from exactly there."}},{"@type":"Question","name":"How is this different from the Pomodoro Timer?","acceptedAnswer":{"@type":"Answer","text":"Pomodoro is built around longer focus/break cycles (minutes) with a long-break rhythm for deep work; the Interval Timer is built around short work/rest bursts (seconds) for a fixed number of rounds \u2014 classic HIIT structure."}},{"@type":"Question","name":"What if I lock my phone or switch apps mid-workout?","acceptedAnswer":{"@type":"Answer","text":"The rounds are driven by a Web Worker reading the real clock, so the timer keeps advancing rather than freezing when the tab goes to the background, and it picks up mid-workout if the page reloads. Tick \u201cNotify me at every round change\u201d to get a system notification at each switch \u2014 useful when the screen is off."}}]}</script>
   <script src="/assets/dial.js"></script>
   <script src="/assets/audio.js"></script>
+  <script src="/assets/timer-core.js"></script>
   <script src="/assets/app.js"></script>
 </body>
 </html>
