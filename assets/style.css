@@ -40,6 +40,15 @@
   --radius: 16px;
   --radius-sm: 9px;
 
+  /* The chrome band: header and toolbar share one tint so the glow behind
+     them reads as a single strip rather than two. --line-soft is the lighter
+     rule the toolbar draws with, so its two hairlines do not out-shout the
+     instrument's own border. --maxw is the column the chrome lines up on;
+     .wrap adds its own 24px gutter inside it. */
+  --chrome: color-mix(in srgb, var(--bg) 85%, transparent);
+  --line-soft: color-mix(in srgb, var(--line) 62%, transparent);
+  --maxw: 1080px;
+
   --font-display: ui-sans-serif, -apple-system, "Segoe UI", system-ui, sans-serif;
   --font-body: -apple-system, system-ui, "Segoe UI", Roboto, Helvetica, Arial, sans-serif;
   --font-mono: ui-monospace, "SF Mono", "Cascadia Code", "Roboto Mono", "Consolas", "Menlo", monospace;
@@ -149,23 +158,42 @@ p {
   border-radius: 4px;
 }
 
-/* ---------- header / nav ---------- */
-
-.site-header {
-  position: sticky;
+.skip-link {
+  position: absolute;
+  left: -9999px;
   top: 0;
-  z-index: 40;
-  backdrop-filter: blur(14px);
-  background: color-mix(in srgb, var(--bg) 85%, transparent);
-  border-bottom: 1px solid var(--line);
+  z-index: 100;
+  background: var(--amber);
+  color: #1a1204;
+  font-weight: 800;
+  padding: 10px 14px;
+  border-radius: 0 0 var(--radius-sm) 0;
+  text-decoration: none;
+}
+
+.skip-link:focus {
+  left: 0;
+}
+
+/* ---------- header ---------- */
+
+/* Brand and the theme toggle, nothing else — every link lives in the toolbar
+   below. Deliberately not sticky: a sticky bar can be painted over an AdSense
+   anchor unit, and it would be silently killed by the rail's overflow-x
+   anyway. Header and toolbar together are one 98px band at 390px, which is
+   the whole budget for chrome on this site. */
+.site-header {
+  background: var(--chrome);
+  border-bottom: 1px solid var(--line-soft);
 }
 
 .site-header .wrap {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 20px;
-  padding-top: 12px;
-  padding-bottom: 12px;
+  padding-top: 8px;
+  padding-bottom: 8px;
 }
 
 .wordmark {
@@ -193,42 +221,6 @@ p {
   50%, 100% { opacity: 0.25; }
 }
 
-.tool-nav {
-  display: flex;
-  flex-wrap: wrap;
-  gap: 2px;
-  list-style: none;
-  margin: 0;
-  padding: 0;
-  flex: 1;
-}
-
-.tool-nav a {
-  display: inline-flex;
-  align-items: center;
-  gap: 6px;
-  padding: 7px 11px;
-  border-radius: 999px;
-  color: var(--fg-dim);
-  text-decoration: none;
-  font-size: 13px;
-  font-weight: 600;
-  white-space: nowrap;
-  border: 1px solid transparent;
-  transition: color 0.15s ease, border-color 0.15s ease, background 0.15s ease;
-}
-
-.tool-nav a:hover {
-  color: var(--fg);
-  border-color: var(--line);
-}
-
-.tool-nav a[aria-current="page"] {
-  color: var(--bg);
-  background: var(--amber);
-  border-color: var(--amber);
-}
-
 .header-controls {
   display: flex;
   align-items: center;
@@ -254,36 +246,185 @@ p {
   height: 18px;
 }
 
-.nav-toggle {
-  display: none;
-  appearance: none;
-  border: 1px solid var(--line);
-  background: var(--bg-raised);
-  color: var(--fg);
-  width: 36px;
-  height: 36px;
-  border-radius: var(--radius-sm);
-  cursor: pointer;
+/* ==========================================================================
+   toolbar v1 — the portfolio navigation pattern.
+   Spec: github.com/ngineer420/ngineer420.github.io/issues/13
+
+   Copy this block verbatim into any site in the portfolio. Everything
+   site-specific is the eight custom properties declared on `.toolbar` below;
+   remap those to the host site's tokens and nothing else needs touching. The
+   silhouette is shared, the palette and type are not.
+
+   Structure: one <nav class="toolbar">, a direct child of <body> immediately
+   after </header>. A <details> trigger pinned left that never scrolls, and a
+   single non-wrapping row of tool chips that does. Never sticky.
+   ========================================================================== */
+
+.toolbar {
+  /* ---- the only site-owned values in this block ---- */
+  --tb-bg: var(--chrome);
+  --tb-bg-elev: var(--bg-raised);
+  --tb-border: var(--line);
+  --tb-border-soft: var(--line-soft);
+  --tb-text: var(--fg);
+  --tb-text-dim: var(--fg-dim);
+  --tb-accent: var(--amber);
+  --tb-focus: var(--amber);
+
+  /* A stacking context, so the sheet lands above the tool's own positioned
+     bits (crop box, compare handle) without a z-index arms race inside it. */
+  position: relative; z-index: 40;
+  display: flex; align-items: stretch;
+  /* 44px of content plus the 1px rule. box-sizing is border-box, so a flat
+     44px here leaves the rail a 43px content box, the 44px chips overflow it
+     by a pixel and the 2px active underline gets clipped to 1px. */
+  height: 45px;
+  background: var(--tb-bg);
+  border-bottom: 1px solid var(--tb-border-soft);
+}
+/* The bar is full-bleed so its rule spans the window, but its contents belong
+   in the same column as the header and <main> — the spec's own rail sizing
+   ("8 chips inside a 1140px column") assumes this and its CSS omitted it,
+   which leaves the trigger flush at x=0 while the wordmark sits at x=70.
+   Full-bleed is kept below 720px, where the 40px would come straight out of
+   the rail's scrollable width and the fades already handle the edges. */
+@media (min-width: 720px) {
+  .toolbar { padding-inline: max(20px, calc((100% - var(--maxw)) / 2 + 20px)); }
 }
 
-@media (max-width: 880px) {
-  .nav-toggle {
-    display: grid;
-    place-items: center;
+/* ---- the trigger: labelled, counted, and never collapses to an icon ---- */
+.tb-menu { position: relative; flex: 0 0 auto; }
+.tb-trigger {
+  display: flex; align-items: center; gap: 8px;
+  min-height: 44px; padding: 0 14px;
+  white-space: nowrap; cursor: pointer; list-style: none;
+  font-size: 14.5px; font-weight: 700; color: var(--tb-text);
+  border-right: 1px solid var(--tb-border-soft);
+}
+.tb-trigger::-webkit-details-marker { display: none; } /* Safari */
+.tb-trigger::marker { content: ""; }
+.tb-trigger:hover { color: var(--tb-accent); }
+.tb-glyph { color: var(--tb-accent); font-size: 15px; line-height: 1; }
+
+/* ---- the rail: one row, always. Wrapping is what produced every ragged
+   multi-row header in the audit; nowrap makes those faults impossible. ---- */
+.tb-rail {
+  flex: 1 1 auto; min-width: 0;
+  /* The centre-on-current JS reads `current.offsetLeft` and treats it as an
+     offset within the scroller. Without a position here the nearest
+     positioned ancestor is `.toolbar`, so that figure also carries the
+     trigger's width and the rail lands ~17px too far right: at 320px the
+     current chip arrives with its first letter under the left fade, which is
+     the clipped label this pattern exists to prevent. */
+  position: relative;
+  display: flex; flex-wrap: nowrap; gap: 0;
+  margin: 0; padding: 0; list-style: none;
+  overflow-x: auto; overflow-y: hidden;
+  -webkit-overflow-scrolling: touch;
+  overscroll-behavior-x: contain;  /* a swipe past the end is not a back-nav */
+  scroll-padding-inline: 24px;     /* Tab must not park a chip under the fade */
+  scrollbar-width: none;
+  /* The right fade is ON by default and JS turns it off once it can prove the
+     rail is scrolled to its end. Defaulting it off would mean a JS-disabled
+     visitor gets a label hard-clipped mid-word, which is the one thing this
+     pattern exists to stop. It costs nothing when the rail does not scroll,
+     because the rail is a flex item that stretches: the last chip only reaches
+     the right edge when there is something behind it. */
+  --f0: 0px; --f1: 24px;
+  -webkit-mask-image: linear-gradient(to right, transparent 0, #000 var(--f0),
+    #000 calc(100% - var(--f1)), transparent 100%);
+  mask-image: linear-gradient(to right, transparent 0, #000 var(--f0),
+    #000 calc(100% - var(--f1)), transparent 100%);
+}
+.tb-rail::-webkit-scrollbar { display: none; } /* the fade is the affordance */
+.tb-rail.can-l { --f0: 24px; }
+.tb-rail.js-on:not(.can-r) { --f1: 0px; }
+.tb-rail > li { flex: 0 0 auto; }
+.tb-rail a {
+  display: flex; align-items: center; min-height: 44px; padding: 0 12px;
+  white-space: nowrap; text-decoration: none;
+  font-size: 14.5px; font-weight: 600; color: var(--tb-text-dim);
+  box-shadow: inset 0 -2px 0 transparent;
+}
+/* Hover changes colour only, so the scroller never reflows under the cursor. */
+.tb-rail a:hover { color: var(--tb-text); text-decoration: none; }
+.tb-rail a[aria-current] {
+  color: var(--tb-text); font-weight: 800;
+  box-shadow: inset 0 -2px 0 var(--tb-accent);
+}
+
+/* outline-offset is negative so the ring is not clipped by the scroller. */
+.tb-trigger:focus-visible,
+.tb-rail a:focus-visible,
+.tb-sheet a:focus-visible {
+  outline: 2px solid var(--tb-focus); outline-offset: -2px;
+}
+
+/* ---- the sheet: a disclosure, not a modal. Focus is never trapped. ---- */
+.tb-sheet {
+  position: absolute; top: 100%; left: 0; z-index: 2;
+  width: min(680px, 92vw); max-height: min(70vh, 520px);
+  overflow-y: auto; overscroll-behavior: contain;
+  background: var(--tb-bg-elev);
+  border: 1px solid var(--tb-border);
+  border-radius: 0 0 12px 12px;
+  box-shadow: 0 18px 40px -20px rgba(0, 0, 0, .5);
+  padding: 14px 4px;
+  columns: 2; column-gap: 24px;
+}
+/* At <= 8 destinations the sheet renders one flat list and the columns move
+   onto it; group headings are noise at that size. */
+.tb-sheet.is-flat { columns: 1; }
+.tb-sheet.is-flat ul { columns: 2; column-gap: 24px; }
+.tb-sheet ul { margin: 0 0 12px; padding: 0; list-style: none; break-inside: avoid; }
+.tb-sheet li { break-inside: avoid; }
+.tb-sheet a {
+  display: flex; align-items: center; min-height: 36px; padding: 0 14px;
+  font-size: 14.5px; text-decoration: none; color: var(--tb-text-dim);
+  border-left: 3px solid transparent; /* reserved, so the current item never shifts */
+}
+.tb-sheet a:hover { color: var(--tb-text); text-decoration: none; }
+.tb-sheet a[aria-current] {
+  color: var(--tb-text); font-weight: 800; border-left-color: var(--tb-accent);
+}
+/* <p>, not <h2>: chrome headings would pollute the outline of an SEO page. */
+.tb-grouplabel {
+  margin: 0 0 4px; padding: 0 14px;
+  font-size: 12px; font-weight: 800; letter-spacing: .08em;
+  text-transform: uppercase; color: var(--tb-text-dim);
+}
+/* The one route from the chrome to a tier-2 family. */
+.tb-hub {
+  column-span: all; break-inside: avoid;
+  margin: 2px 0 0; padding: 10px 14px 0;
+  border-top: 1px solid var(--tb-border-soft);
+}
+.tb-hub a {
+  padding: 0; border-left: 0; min-height: 36px;
+  color: var(--tb-accent); font-weight: 700;
+}
+
+/* ---- mobile: full-bleed sheet, scrim, short trigger label ---- */
+.tb-scrim { display: none; }
+@media (max-width: 719px) {
+  .tb-menu { position: static; }
+  .tb-sheet {
+    left: 0; right: 0; width: auto; columns: 1;
+    border-width: 1px 0; border-radius: 0;
   }
-  .tool-nav {
-    display: none;
-    order: 5;
-    width: 100%;
-    flex-basis: 100%;
-    padding-top: 10px;
+  .tb-sheet.is-flat ul { columns: 1; }
+  .tb-sheet a { min-height: 44px; padding: 0 16px; }
+  /* Anchored to the bar rather than the viewport, so it cannot cover the
+     trigger — with JS off, tapping the trigger again is the way out and there
+     must be nothing on top of it. Pure CSS, so it works with JS off too. */
+  .tb-menu[open] ~ .tb-scrim {
+    display: block; position: absolute; top: 100%; left: 0; right: 0;
+    height: 100vh; z-index: 1; background: rgba(0, 0, 0, .42);
   }
-  .site-header .wrap {
-    flex-wrap: wrap;
-  }
-  .tool-nav.is-open {
-    display: flex;
-  }
+}
+@media (max-width: 399px) {
+  .tb-label-long { display: none; } /* "All 6 tools" -> "All 6"; the accessible
+                                       name on the summary keeps the full string */
 }
 
 /* ---------- hero ---------- */
@@ -805,6 +946,65 @@ button.ctrl-btn.ghost:hover {
   border-color: var(--fg-dim);
 }
 
+/* preset-duration siblings — the tier-2 family, inside the tool that owns it.
+   A baked-in duration is a parameter of this instrument rather than a peer of
+   it, so the fifteen preset pages cross-link from here and from one hub link
+   in the toolbar sheet, instead of taking fifteen rail slots. Real links in a
+   container that is never hidden or load-gated. */
+
+.preset-chips {
+  margin-top: 18px;
+  padding-top: 16px;
+  border-top: 1px solid var(--line);
+}
+
+.preset-chips-label {
+  display: block;
+  margin-bottom: 10px;
+  font-family: var(--font-display);
+  font-size: 10px;
+  font-weight: 800;
+  letter-spacing: 0.16em;
+  text-transform: uppercase;
+  color: var(--fg-dim);
+}
+
+.preset-chips ul {
+  display: flex;
+  flex-wrap: wrap;
+  justify-content: center;
+  gap: 6px;
+  list-style: none;
+  margin: 0;
+  padding: 0;
+}
+
+.preset-chips a {
+  display: inline-flex;
+  align-items: center;
+  min-height: 36px;
+  padding: 0 13px;
+  border: 1px solid var(--line);
+  border-radius: 999px;
+  font-family: var(--font-mono);
+  font-size: 12.5px;
+  font-variant-numeric: tabular-nums;
+  color: var(--fg-dim);
+  text-decoration: none;
+  transition: color 0.15s ease, border-color 0.15s ease;
+}
+
+.preset-chips a:hover {
+  color: var(--fg);
+  border-color: var(--fg-dim);
+}
+
+.preset-chips a[aria-current="page"] {
+  color: var(--amber);
+  border-color: var(--amber);
+  font-weight: 700;
+}
+
 /* lap table (stopwatch) */
 
 .lap-table {
@@ -1239,6 +1439,7 @@ button.ctrl-btn.ghost:hover {
   width: 10px;
   margin: 14px 0 0 auto;
   line-height: 0;
+  cursor: default;
 }
 
 .erabbit-mark img {

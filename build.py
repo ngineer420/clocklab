@@ -25,7 +25,7 @@ TODAY = "2026-08-10"
 # ---------------------------------------------------------------- tools --
 
 def countdown_workspace(seconds=300, preset=False, label="Countdown Timer",
-                        presets=None, hint=None):
+                        presets=None, hint=None, chips=""):
     """The countdown instrument's markup, in one place.
 
     The preset-duration pages (/5-minute-timer/, /egg-timer/ and the rest) are
@@ -43,6 +43,13 @@ def countdown_workspace(seconds=300, preset=False, label="Countdown Timer",
 
     The plain /countdown-timer/ page passes neither, so it keeps restoring
     whatever you last set there.
+
+    `chips` is the preset-duration sibling row (see duration_chips). It sits
+    inside the instrument, below its own controls, because a duration is a
+    parameter of this tool rather than a peer of it. It is passed in rather
+    than built here so the homepage's copy of the instrument can go without:
+    that panel ships `hidden` until its card is picked, and links inside a
+    load-gated container are display:none on arrival.
     """
     h, m, s = seconds // 3600, (seconds % 3600) // 60, seconds % 60
     preset_html = ""
@@ -89,21 +96,39 @@ def countdown_workspace(seconds=300, preset=False, label="Countdown Timer",
       </div>
       <p class="notify-state" id="cd-notify-state" role="status"></p>
       <p class="hint">{hint}</p>
-    </div>
+{chips}    </div>
 """.format(
         duration=' data-duration="{}"'.format(seconds) if preset else "",
         label=label,
         readout="%02d:%02d:%02d" % (h, m, s),
         presets=preset_html,
+        chips=chips,
         h=h, m=m, s=s,
         hint=hint or "Ends with an audible alarm — keep this tab's sound unmuted. A running countdown keeps counting in a background tab and picks itself back up if you reload.",
     )
 
 
+# The six tier-1 tools, and the single source of truth for the toolbar.
+#
+# A page is tier 1 only if it answers a different question (portfolio nav
+# spec, ngineer420.github.io#13). Everything in this list qualifies; the
+# fifteen preset-duration pages below do not, because they are this same
+# countdown with the time baked in, so they never take a rail or a sheet slot.
+#
+#   nav_label -> the rail chip, <= 18 characters. `name` is the anchor text in
+#                the sheet, the tool cards and the related-tool blocks.
+#   nav_group -> which sheet group this tool would sit in. Unused while the
+#                site has <= 8 tier-1 tools, because the sheet renders flat at
+#                that size and group headings are noise; kept so the
+#                arrangement is already decided the day a ninth arrives.
+#
+# Rail order is this list's order, which is also the homepage grid's order.
 TOOLS = [
     dict(
         slug="countdown-timer",
         name="Countdown Timer",
+        nav_label="Countdown",
+        nav_group="timers",
         tagline="Set it, start it, get an alarm when it hits zero.",
         description="Free browser-based countdown timer. Set hours, minutes and seconds, start/pause/reset, and get an audible alarm at zero. No install, works offline.",
         icon='<path d="M6 3h12M6 21h12M6 3c0 6 5 7 6 9-1 2-6 3-6 9M18 3c0 6-5 7-6 9 1 2 6 3 6 9"/>',
@@ -127,6 +152,8 @@ TOOLS = [
     dict(
         slug="stopwatch",
         name="Stopwatch",
+        nav_label="Stopwatch",
+        nav_group="timers",
         tagline="Start, stop, lap — with a clean split table.",
         description="Free browser-based stopwatch with lap timing. Start, stop and record laps with a tabular, millisecond-accurate readout. No install, works offline.",
         icon='<path d="M10 2h4"/><path d="M12 2v3"/><circle cx="12" cy="14" r="8"/><path d="M12 14V9.5"/><path d="M17.7 8.3l1.1-1.1"/>',
@@ -175,6 +202,8 @@ TOOLS = [
     dict(
         slug="pomodoro-timer",
         name="Pomodoro Timer",
+        nav_label="Pomodoro",
+        nav_group="timers",
         tagline="Focus blocks and breaks, on an honest cycle.",
         description="Free browser-based Pomodoro timer. Configurable focus and break lengths, automatic cycling, and a session dial. No install, works offline.",
         icon='<circle cx="12" cy="13" r="8"/><path d="M12 13V9"/><path d="M12 13l3 2"/><path d="M9 3.2c1.4-1 4.6-1 6 0"/>',
@@ -231,6 +260,8 @@ TOOLS = [
     dict(
         slug="alarm-clock",
         name="Alarm Clock",
+        nav_label="Alarm",
+        nav_group="clocks",
         tagline="Set a time on the dial, it rings when you get there.",
         description="Free browser-based alarm clock. Set a wall-clock time, watch the analog dial track it, and get an alarm when the time arrives — with an optional daily repeat.",
         icon='<circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2"/><path d="M5 4L3 6"/><path d="M19 4l2 2"/>',
@@ -284,6 +315,8 @@ TOOLS = [
     dict(
         slug="interval-timer",
         name="Interval Timer",
+        nav_label="Interval",
+        nav_group="timers",
         tagline="Work, rest, repeat — HIIT rounds on a dial.",
         description="Free browser-based HIIT interval timer. Configurable work/rest lengths and round count, with a get-ready countdown and round dots. No install, works offline.",
         icon='<rect x="3" y="10" width="3" height="10" rx="1"/><rect x="8.5" y="5" width="3" height="15" rx="1"/><rect x="14" y="12" width="3" height="8" rx="1"/><rect x="19" y="3" width="3" height="17" rx="1" fill="currentColor" stroke="none" opacity="0.55"/>',
@@ -338,6 +371,8 @@ TOOLS = [
     dict(
         slug="world-clock",
         name="World Clock",
+        nav_label="World Clock",
+        nav_group="clocks",
         tagline="Every timezone you track, ticking at once.",
         description="Free browser-based world clock. Track the current time across any selection of timezones at once, with day/night position at a glance.",
         icon='<circle cx="12" cy="12" r="9"/><path d="M3 12h18"/><path d="M12 3c3 3 3 15 0 18"/><path d="M12 3c-3 3-3 15 0 18"/>',
@@ -406,46 +441,161 @@ ERABBIT = '<a href="https://erabb.it" class="erabbit-mark" aria-label="erabb.it"
 THEME_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>'
 
 
-def nav_items(current):
-    items = []
-    home_current = current is None
-    items.append(
-        '<li><a href="/" data-panel-link=""{cur}>Home</a></li>'.format(
-            cur=' aria-current="page"' if home_current else ""
-        )
+# ---------------------------------------------------------------- nav --
+# The portfolio toolbar (ngineer420.github.io#13): one <nav class="toolbar">,
+# a direct child of <body> immediately after </header> and always above
+# <main>. A labelled, counted <details> trigger pinned left that never
+# scrolls, and one non-wrapping row of tool chips that does.
+#
+# It is not sticky and neither is the header, so nothing in the chrome can
+# overlay an AdSense anchor unit or an in-content placement. The block is
+# byte-identical on all 26 pages bar a single aria-current, which is what
+# makes regenerating the whole site from one list safe.
+
+NAV_NOUN = "tools"
+
+# Sheet groups, in order. Unused while there are <= 8 tier-1 destinations —
+# the sheet renders flat at that size because group headings are noise there
+# — but kept so the arrangement is decided before a ninth tool arrives.
+NAV_GROUPS = [
+    ("timers", "Timers & stopwatch"),
+    ("clocks", "Clocks & alarms"),
+]
+
+# The tier-1 tool the preset-duration pages are a parameter of. It owns their
+# URLs and the /timers/ hub for the purposes of the rail's selected state.
+VARIANT_PARENT = "countdown-timer"
+
+SKIP_LINK = '  <a class="skip-link" href="#main">Skip to the tool</a>'
+
+
+def esc(text):
+    """Anchor and label text is data, so it gets escaped on the way out."""
+    return (
+        text.replace("&", "&amp;")
+        .replace("<", "&lt;")
+        .replace(">", "&gt;")
+        .replace('"', "&quot;")
     )
-    for t in TOOLS:
-        cur = current == t["slug"]
-        items.append(
-            '<li><a href="{url}" data-panel-link="{slug}"{cur}>{name}</a></li>'.format(
-                url=clean_url(t["slug"]), slug=t["slug"], name=t["name"],
-                cur=' aria-current="page"' if cur else ""
+
+
+def nav_anchor(href, text, current, owns=()):
+    """One toolbar anchor, carrying the page's only per-page difference.
+
+    `aria-current="page"` is reserved for a link that really does point at the
+    page being rendered. On a preset-duration page nothing in the rail does,
+    so the countdown timer — the tool those pages are a baked-in parameter of
+    — takes `aria-current="true"` instead: "the current item in this set".
+    The CSS matches the bare attribute so both render selected. Without this
+    the rail would sit with nothing selected on 16 of the 26 pages.
+    """
+    if href == current:
+        mark = ' aria-current="page"'
+    elif current in owns:
+        mark = ' aria-current="true"'
+    else:
+        mark = ""
+    return '<a href="{href}"{mark}>{text}</a>'.format(
+        href=esc(href), mark=mark, text=esc(text)
+    )
+
+
+def countdown_family():
+    """Every URL the countdown timer owns: its presets, and their hub."""
+    return tuple([clean_url(d["slug"]) for d in DURATION_PAGES] + ["/timers/"])
+
+
+def toolbar(current):
+    """The toolbar for the page whose canonical path is `current`.
+
+    Home is the brand, so it never takes a slot here; Privacy and Terms live
+    in the footer. The sheet lists every rail destination — the rail is never
+    the only route to anything — and closes with one hub link per tier-2
+    family, which is how fifteen preset timers reach the chrome without
+    fifteen chips.
+    """
+    owns = countdown_family()
+    rail = TOOLS[:8]  # the spec's cap; this site has six
+
+    def entry(tool, text):
+        return nav_anchor(
+            clean_url(tool["slug"]), text, current,
+            owns=owns if tool["slug"] == VARIANT_PARENT else (),
+        )
+
+    # Flat at <= 8 destinations, grouped at 9+. Automatic, never hand-forced.
+    flat = len(TOOLS) <= 8
+    lines = []
+    if flat:
+        lines.append("        <ul>")
+        lines += ["          <li>{}</li>".format(entry(t, t["name"])) for t in TOOLS]
+        lines.append("        </ul>")
+    else:
+        for i, (key, title) in enumerate(NAV_GROUPS, start=1):
+            members = [t for t in TOOLS if t["nav_group"] == key]
+            if not members:
+                continue
+            gid = "tb-g{}".format(i)
+            # <p>, not <h2>: these are SEO landing pages and a chrome heading
+            # would pollute the document outline. AT still announces the list.
+            lines.append(
+                '        <p class="tb-grouplabel" id="{id}">{t}</p>'.format(id=gid, t=esc(title))
             )
-        )
-    # The preset-duration family lives behind one nav item rather than
-    # sixteen. No data-panel-link: the homepage's panel switcher only
-    # intercepts links that carry one, and this is a real navigation.
-    items.append(
-        '<li><a href="/timers/"{cur}>Timers</a></li>'.format(
-            cur=' aria-current="page"' if current == "timers" else ""
-        )
+            lines.append('        <ul aria-labelledby="{id}">'.format(id=gid))
+            lines += ["          <li>{}</li>".format(entry(t, t["name"])) for t in members]
+            lines.append("        </ul>")
+    hub = nav_anchor(
+        "/timers/", "All {n} preset timers →".format(n=len(DURATION_PAGES)), current
     )
-    return "\n      ".join(items)
+    lines.append('        <p class="tb-hub">{}</p>'.format(hub))
+
+    chips = "\n".join(
+        "      <li>{}</li>".format(entry(t, t["nav_label"])) for t in rail
+    )
+
+    return """  <nav class="toolbar" aria-label="Tools">
+    <details class="tb-menu">
+      <summary class="tb-trigger" aria-label="All {count} {noun}">
+        <span class="tb-glyph" aria-hidden="true">&#9636;</span>
+        <span class="tb-label">All {count}<span class="tb-label-long"> {noun}</span></span>
+      </summary>
+      <div class="tb-sheet{flat}">
+{sheet}
+      </div>
+    </details>
+    <div class="tb-scrim"></div>
+    <ul class="tb-rail">
+{chips}
+    </ul>
+  </nav>""".format(
+        count=len(TOOLS),
+        noun=esc(NAV_NOUN),
+        flat=" is-flat" if flat else "",
+        sheet="\n".join(lines),
+        chips=chips,
+    )
 
 
-def header(current):
+def header():
+    """Brand and the theme toggle. Zero links, no hamburger, not sticky.
+
+    Everything that used to live here is in the toolbar underneath it, which
+    shows the peers a collapsed panel hid: the old menu was 122px of links
+    wrapped across three rows behind a JS toggle.
+    """
     return """  <header class="site-header">
     <div class="wrap">
       <a href="/" class="wordmark" data-panel-link=""><span class="tick">[</span>clocklab<span class="tick">]</span></a>
-      <button type="button" class="nav-toggle" id="nav-toggle" aria-expanded="false" aria-controls="tool-nav" aria-label="Toggle menu">☰</button>
-      <ul class="tool-nav" id="tool-nav">
-      {nav}
-      </ul>
       <div class="header-controls">
         <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Toggle light and dark theme">{icon}</button>
       </div>
     </div>
-  </header>""".format(nav=nav_items(current), icon=THEME_ICON)
+  </header>""".format(icon=THEME_ICON)
+
+
+def chrome(current):
+    """Everything between <body> and <main>, in order, on every page."""
+    return "\n".join([SKIP_LINK, header(), toolbar(current)])
 
 
 def footer():
@@ -563,8 +713,8 @@ def tool_page(tool):
     )
 
     body = """<body>
-{header}
-  <main>
+{chrome}
+  <main id="main">
     <section class="panel">
       <div class="wrap">
         <div class="panel-head">
@@ -609,10 +759,10 @@ def tool_page(tool):
   <script type="application/ld+json">{faq_ld}</script>
 {scripts}
 </body>""".format(
-        header=header(tool["slug"]),
+        chrome=chrome(canonical_path),
         name=tool["name"],
         intro=tool["intro"],
-        workspace=tool["workspace"],
+        workspace=tool.get("page_workspace") or tool["workspace"],
         how_to=how_to_html,
         faq=faq_html,
         related=related_html,
@@ -627,8 +777,9 @@ def tool_page(tool):
     write_clean(tool["slug"], html)
 
 
-for t in TOOLS:
-    tool_page(t)
+# The tool pages are written further down, after the preset-duration family
+# exists: the toolbar's hub link counts it, and the countdown timer's own page
+# carries a chip for every member.
 
 # ------------------------------------------------- preset duration pages --
 # One page per duration people actually type into a search box. The countdown
@@ -694,7 +845,6 @@ DURATION_PAGES = [
             ('Will the countdown keep running if I switch to another tab?',
              'Yes. Browsers throttle background JavaScript, which is how naive timers quietly lose seconds while you are elsewhere. This one runs its countdown in a Web Worker and derives each tick from a real timestamp, so the tab can sit in the background for the whole interval and the alarm still sounds at the right moment.'),
         ],
-        workspace=countdown_workspace(seconds=30, preset=True, label='30 Second Timer'),
     ),
     dict(
         slug='90-second-timer',
@@ -720,7 +870,6 @@ DURATION_PAGES = [
             ('What happens if I reload the page part way through?',
              'The countdown survives it. Timer state is kept in the browser rather than on a server, so a refresh, an accidental back button or a closed lid picks up where the clock actually is, not where the page last drew it. Nothing is uploaded and nothing is fetched back to make that work.'),
         ],
-        workspace=countdown_workspace(seconds=90, preset=True, label='90 Second Timer'),
     ),
     dict(
         slug='2-minute-timer',
@@ -746,7 +895,6 @@ DURATION_PAGES = [
             ('Can I run this as a silent timer?',
              'You can mute the tab and simply watch the countdown, and nothing else on the page makes noise. The reverse catches people out more often: the alarm cannot be heard through a muted tab, and on a phone the hardware silent switch will suppress it too. If the tone matters, check both before you start.'),
         ],
-        workspace=countdown_workspace(seconds=120, preset=True, label='2 Minute Timer'),
     ),
     dict(
         slug='3-minute-timer',
@@ -772,7 +920,6 @@ DURATION_PAGES = [
             ('Does the alarm need a download or a connection?',
              'No. The tone is generated live in the browser from oscillators, so there is no sound file to fetch and nothing to install. Once the page has loaded it also runs offline, which matters in a gym basement or a kitchen with poor signal. Losing reception mid-round has no effect on the countdown.'),
         ],
-        workspace=countdown_workspace(seconds=180, preset=True, label='3 Minute Timer'),
     ),
     dict(
         slug='5-minute-timer',
@@ -799,7 +946,6 @@ DURATION_PAGES = [
             ('How accurate is this timer?',
              'Each tick is computed by comparing the current timestamp against the moment you started, so it cannot accumulate error the way a counter that adds one second per frame does. A busy machine or a throttled background tab may draw the display a fraction late, but the elapsed time it reports stays correct and the alarm lands on the real second.'),
         ],
-        workspace=countdown_workspace(seconds=300, preset=True, label='5 Minute Timer'),
     ),
     dict(
         slug='10-minute-timer',
@@ -826,7 +972,6 @@ DURATION_PAGES = [
             ('Does the page store anything about me?',
              'No. The countdown runs entirely in your browser, nothing is uploaded, and no account, email or sign-in is involved anywhere. The only thing kept is the timer state itself, held locally so that a reload does not lose your place. Closing the tab discards it, and there is nothing on a server to delete.'),
         ],
-        workspace=countdown_workspace(seconds=600, preset=True, label='10 Minute Timer'),
     ),
     dict(
         slug='15-minute-timer',
@@ -853,7 +998,6 @@ DURATION_PAGES = [
             ('Will it still be running when I unlock my phone?',
              'The remaining time will be right, because it is recalculated from the moment you started rather than counted while the screen was off. A locked phone can suspend the page altogether, though, so the tone may arrive late or not at all. If the alarm is doing real work, keep the screen awake.'),
         ],
-        workspace=countdown_workspace(seconds=900, preset=True, label='15 Minute Timer'),
     ),
     dict(
         slug='20-minute-timer',
@@ -879,7 +1023,6 @@ DURATION_PAGES = [
             ('Will the alarm wake me if I am asleep?',
              'Only if the sound can reach you. The alarm is generated live from oscillator tones in the page, so there is no file to download and nothing to load, but a muted tab produces silence and a phone with its silent switch on will stay quiet whatever the page does. Check the volume before you lie down rather than after.'),
         ],
-        workspace=countdown_workspace(seconds=1200, preset=True, label='20 Minute Timer'),
     ),
     dict(
         slug='25-minute-timer',
@@ -905,7 +1048,6 @@ DURATION_PAGES = [
             ('What happens if I reload the page partway through?',
              'The countdown survives it. Timer state is kept in the browser, so a refresh, a stray back button, or a tab the browser decided to restart picks up the same countdown instead of resetting to 25:00. Time remaining is worked out from a real timestamp rather than counted tick by tick, so nothing is quietly lost while the page reloads.'),
         ],
-        workspace=countdown_workspace(seconds=1500, preset=True, label='25 Minute Timer'),
     ),
     dict(
         slug='30-minute-timer',
@@ -932,7 +1074,6 @@ DURATION_PAGES = [
             ('Is it suitable for a child screen-time limit?',
              'It works for that, with one caveat: the alarm sounds in the tab running it, so a muted or closed tab rings nothing. On the other hand, nothing about the session is uploaded or kept on a server, so there is no account to make, no history to manage and nothing to sign into. It is a countdown that anyone can start with one tap.'),
         ],
-        workspace=countdown_workspace(seconds=1800, preset=True, label='30 Minute Timer'),
     ),
     dict(
         slug='45-minute-timer',
@@ -958,7 +1099,6 @@ DURATION_PAGES = [
             ('Does it work without an internet connection?',
              'Once the page has loaded, yes. Everything runs in the browser: the countdown, the display, and the alarm, which is generated live from oscillator tones instead of fetched as an audio file. A gym basement or a classroom with no signal makes no difference to a timer that is already loaded, and nothing is sent anywhere while it runs.'),
         ],
-        workspace=countdown_workspace(seconds=2700, preset=True, label='45 Minute Timer'),
     ),
     dict(
         slug='1-hour-timer',
@@ -985,7 +1125,6 @@ DURATION_PAGES = [
             ('Why use a countdown instead of an alarm at a set time?',
              'A countdown removes the arithmetic. You know the hour started now, but you do not necessarily know off-hand that now plus sixty is 3:47, and a countdown survives being wrong about the current time. If the thing you are working from is a wall-clock moment instead, the alarm clock on this site takes the time itself and rings when the clock reaches it.'),
         ],
-        workspace=countdown_workspace(seconds=3600, preset=True, label='1 Hour Timer'),
     ),
     dict(
         slug='90-minute-timer',
@@ -1012,7 +1151,6 @@ DURATION_PAGES = [
             ('Does a football match actually last ninety minutes?',
              'The playing time does, as two halves of forty-five. Elapsed time is always longer, because of a half-time interval of around fifteen minutes and stoppage time added at the end of each half. A ninety-minute timer measures the football rather than the afternoon, so allow closer to two hours if you are timing the whole thing.'),
         ],
-        workspace=countdown_workspace(seconds=5400, preset=True, label='90 Minute Timer'),
     ),
     dict(
         slug='2-hour-timer',
@@ -1039,7 +1177,6 @@ DURATION_PAGES = [
             ('Why does the page open with the two hours already set?',
              'Because dialling 2:00:00 by hand is the tedious part of a long timer, and mistyping it by a factor of ten is easy to do and slow to notice. This page arrives preset, so starting takes a single tap and there is nothing to enter. For a length that is not on the list, the countdown timer accepts any combination of hours, minutes and seconds.'),
         ],
-        workspace=countdown_workspace(seconds=7200, preset=True, label='2 Hour Timer'),
     ),
     dict(
         slug='egg-timer',
@@ -1061,21 +1198,61 @@ DURATION_PAGES = [
              'The timer does, the numbers do not. Poaching is roughly three minutes for a set white and a soft yolk, and frying depends on the pan more than the clock. Set those on the countdown timer rather than using the boiled-egg presets here.'),
         ],
         extra=EGG_EXTRA,
-        workspace=countdown_workspace(
-            seconds=480, preset=True, label='Egg Timer',
-            presets=[
-                dict(name='Soft', seconds=360),
-                dict(name='Medium', seconds=480),
-                dict(name='Hard', seconds=660),
-            ],
-            hint='Tap a preset and it starts immediately. Ends with an audible alarm, so keep this tab unmuted — and lift the eggs into cold water as soon as it rings.',
-        ),
+        presets=[
+            dict(name='Soft', seconds=360),
+            dict(name='Medium', seconds=480),
+            dict(name='Hard', seconds=660),
+        ],
+        hint='Tap a preset and it starts immediately. Ends with an audible alarm, so keep this tab unmuted — and lift the eggs into cold water as soon as it rings.',
     ),
 ]
 
 
 def duration_url(entry):
     return clean_url(entry["slug"])
+
+
+# Chip text for the in-panel sibling row. Taken from the slug rather than
+# computed from the seconds, because the slug is what the page is named for:
+# 90-second-timer is ninety seconds, not a minute and a half.
+_CHIP_UNITS = (("-second-timer", " sec"), ("-minute-timer", " min"), ("-hour-timer", " hr"))
+
+
+def duration_chip(entry):
+    for suffix, unit in _CHIP_UNITS:
+        if entry["slug"].endswith(suffix):
+            return entry["slug"][: -len(suffix)] + unit
+    return "Egg"
+
+
+def duration_chips(current_slug):
+    """The preset family as real links, inside the countdown's own controls.
+
+    A preset duration is a parameter of the countdown timer rather than a peer
+    of it, so the fifteen pages cross-link from here and from one hub link in
+    the toolbar sheet — never from the rail, and never from the sheet body.
+
+    "Any length" leads back to the parent tool, so the row is a complete
+    switcher from any member of the family including the tool itself.
+    """
+    items = [("/countdown-timer/", "Any length", current_slug is None)]
+    items += [
+        (duration_url(d), duration_chip(d), d["slug"] == current_slug)
+        for d in DURATION_PAGES
+    ]
+    links = "\n".join(
+        '          <li><a href="{url}"{cur}>{label}</a></li>'.format(
+            url=url, label=label, cur=' aria-current="page"' if cur else ""
+        )
+        for url, label, cur in items
+    )
+    return """      <nav class="preset-chips" aria-label="Preset durations">
+        <span class="preset-chips-label" id="preset-chips-label">Preset lengths</span>
+        <ul aria-labelledby="preset-chips-label">
+{links}
+        </ul>
+      </nav>
+""".format(links=links)
 
 
 def sibling_row(current_slug, limit=None):
@@ -1120,8 +1297,8 @@ def duration_page(entry):
     extra_html = entry.get("extra", "")
 
     body = """<body>
-{header}
-  <main>
+{chrome}
+  <main id="main">
     <section class="panel">
       <div class="wrap">
         <div class="panel-head">
@@ -1168,12 +1345,16 @@ def duration_page(entry):
   <script type="application/ld+json">{faq_ld}</script>
 {scripts}
 </body>""".format(
-        header=header("timers"),
+        chrome=chrome(canonical_path),
         name=entry["name"],
         short=entry["short"],
         intro=entry["intro"],
         second=entry["second"],
-        workspace=entry["workspace"],
+        workspace=countdown_workspace(
+            seconds=entry["seconds"], preset=True, label=entry["name"],
+            presets=entry.get("presets"), hint=entry.get("hint"),
+            chips=duration_chips(entry["slug"]),
+        ),
         uses=uses_html,
         extra=extra_html,
         faq=faq_html,
@@ -1209,8 +1390,8 @@ def timers_hub():
     )
 
     body = """<body>
-{header}
-  <main>
+{chrome}
+  <main id="main">
     <section class="panel">
       <div class="wrap">
         <div class="panel-head">
@@ -1234,13 +1415,24 @@ def timers_hub():
   </main>
 {footer}
 {scripts}
-</body>""".format(header=header("timers"), cards=cards, footer=footer(), scripts=scripts_tail())
+</body>""".format(chrome=chrome(canonical_path), cards=cards, footer=footer(), scripts=scripts_tail())
 
     html = "<!doctype html>\n<html lang=\"en\">\n" + head(
         title, description, canonical_path, json_ld
     ) + "\n" + body + "\n</html>\n"
     write_clean("timers", html)
 
+
+# The countdown timer's own page carries the preset chips; the homepage's copy
+# of the same instrument does not, because that panel ships `hidden` until its
+# card is picked and links inside a load-gated container are display:none on
+# arrival — a breakpoint-free way to hide fifteen URLs from a visitor.
+TOOLS_BY_SLUG[VARIANT_PARENT]["page_workspace"] = countdown_workspace(
+    chips=duration_chips(None)
+)
+
+for t in TOOLS:
+    tool_page(t)
 
 for d in DURATION_PAGES:
     duration_page(d)
@@ -1296,8 +1488,8 @@ def homepage():
     panels_html = "\n".join(panels)
 
     body = """<body>
-{header}
-  <main>
+{chrome}
+  <main id="main">
     <section class="hero">
       <div class="wrap">
         <p class="eyebrow">Six instruments · one bench</p>
@@ -1320,7 +1512,7 @@ def homepage():
 {footer}
 {scripts}
 </body>""".format(
-        header=header(None),
+        chrome=chrome("/"),
         cards=cards_html,
         panels=panels_html,
         footer=footer(),
@@ -1343,8 +1535,8 @@ def legal_page(slug, title_text, body_html):
         name=jstr(title), url=jstr(SITE + canonical_path)
     )
     body = """<body>
-{header}
-  <main>
+{chrome}
+  <main id="main">
     <section class="doc-page">
       <div class="wrap">
 {content}
@@ -1353,7 +1545,7 @@ def legal_page(slug, title_text, body_html):
   </main>
 {footer}
 {scripts}
-</body>""".format(header=header("other"), content=body_html, footer=footer(), scripts=scripts_tail())
+</body>""".format(chrome=chrome(canonical_path), content=body_html, footer=footer(), scripts=scripts_tail())
     html = "<!doctype html>\n<html lang=\"en\">\n" + head(title, description, canonical_path, json_ld) + "\n" + body + "\n</html>\n"
     write_clean(slug, html)
 
@@ -1406,8 +1598,8 @@ def not_found_page():
         name=jstr(title), url=jstr(SITE + "/404.html")
     )
     body = """<body>
-{header}
-  <main>
+{chrome}
+  <main id="main">
     <section class="doc-page">
       <div class="wrap">
         <h1>404 — nothing here</h1>
@@ -1418,7 +1610,7 @@ def not_found_page():
   </main>
 {footer}
 {scripts}
-</body>""".format(header=header("other"), footer=footer(), scripts=scripts_tail())
+</body>""".format(chrome=chrome("/404.html"), footer=footer(), scripts=scripts_tail())
     html = "<!doctype html>\n<html lang=\"en\">\n" + head(title, description, "/404.html", json_ld) + "\n" + body + "\n</html>\n"
     write("404.html", html)
 
