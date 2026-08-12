@@ -172,8 +172,14 @@
     var navLinks = document.querySelectorAll("[data-panel-link]");
     var hero = document.querySelector(".hero");
 
-    function show(slug, push) {
-      slug = slug || "countdown-timer"; // homepage shows the primary tool live
+    function show(slug, push, initial) {
+      // On arrival the homepage drops straight into the primary tool, so the
+      // first thing on screen is a usable timer rather than a menu. But an
+      // explicit "Home" or "← All tools" click is a request for the grid, and
+      // answering that with the countdown timer made both links a lie: the
+      // tool grid could not be reached at all. Back/forward (push=false, but
+      // not the initial load) returns to whichever of the two you were on.
+      if (!slug && initial) slug = "countdown-timer";
       var target = slug ? document.querySelector('[data-panel="' + slug + '"]') : overview;
       if (!target) target = overview;
 
@@ -227,7 +233,7 @@
       show(slug, false);
     });
 
-    show(null, false);
+    show(null, false, true);
   }
 
   /* ============================ COUNTDOWN TIMER (cd-) ============================ */
@@ -451,7 +457,84 @@
       return true;
     }
 
-    if (!restore()) {
+    /* ---- preset pages: /5-minute-timer/, /egg-timer/ and the rest ---- */
+    /* Someone arriving from a search for "5 minute timer" should be one tap
+       from a running timer, not editing three number fields. The page states
+       its duration on the workspace element; the fields are already written
+       out to match, so this only has to agree with them. */
+
+    var workspace = startBtn.closest(".instrument");
+    var presetSeconds = workspace ? Math.max(0, Number(workspace.dataset.duration) || 0) : 0;
+
+    function applyDuration(seconds) {
+      var total = Math.max(0, Math.min(23 * 3600 + 59 * 60 + 59, Math.floor(seconds)));
+      hInput.value = Math.floor(total / 3600);
+      mInput.value = Math.floor((total % 3600) / 60);
+      sInput.value = total % 60;
+      totalMs = readInputsMs();
+      accumulatedMs = 0;
+    }
+
+    // Egg timer and anything else offering named presets: one tap sets the
+    // time and starts it, because two taps to boil an egg is one too many.
+    if (workspace) {
+      var presetBtns = workspace.querySelectorAll("[data-preset-seconds]");
+      Array.prototype.forEach.call(presetBtns, function (btn) {
+        btn.addEventListener("click", function () {
+          running = false;
+          ticker.stop();
+          clearToIdle();
+          applyDuration(Number(btn.dataset.presetSeconds));
+          render();
+          Array.prototype.forEach.call(presetBtns, function (other) {
+            other.classList.toggle("is-active", other === btn);
+            other.setAttribute("aria-pressed", String(other === btn));
+          });
+          startBtn.click(); // inside a real gesture, so this also unlocks audio
+        });
+      });
+    }
+
+    var stored = Store ? Store.load(STORE_KEY) : null;
+    // Whether the saved countdown is one of *this* page's own.
+    //
+    // Every page shares one storage key, so a preset page has to tell "I
+    // started this here and then reloaded" apart from "something else is
+    // running elsewhere". Duration is what tells them apart. A reload or a
+    // pause on this page resumes exactly as it does on the countdown timer;
+    // a twenty-minute timer left running in another tab does not get to
+    // greet a visitor who came looking for five minutes.
+    var pageDurations = [presetSeconds];
+    if (workspace) {
+      Array.prototype.forEach.call(
+        workspace.querySelectorAll("[data-preset-seconds]"),
+        function (btn) { pageDurations.push(Number(btn.dataset.presetSeconds)); }
+      );
+    }
+    var storedIsThisPage = !!(
+      stored && Number(stored.totalMs) &&
+      pageDurations.indexOf(Math.round(Number(stored.totalMs) / 1000)) !== -1
+    );
+
+    if (presetSeconds > 0 && !storedIsThisPage) {
+      applyDuration(presetSeconds);
+      pauseBtn.disabled = true;
+      render();
+
+      if (/(^|[?&])autostart=1(&|$)/.test(location.search)) {
+        // Audio cannot be unlocked without a gesture, and following a link is
+        // not one — so the countdown starts, and the first interaction of any
+        // kind afterwards unlocks sound in time for the alarm.
+        var unlockOnce = function () {
+          if (Audio) Audio.unlock();
+          document.removeEventListener("pointerdown", unlockOnce, true);
+          document.removeEventListener("keydown", unlockOnce, true);
+        };
+        document.addEventListener("pointerdown", unlockOnce, true);
+        document.addEventListener("keydown", unlockOnce, true);
+        startBtn.click();
+      }
+    } else if (!restore()) {
       totalMs = readInputsMs();
       pauseBtn.disabled = true;
       render();
