@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <script>(function(){try{var r=document.documentElement;var t=localStorage.getItem("clocklab-theme");if(!t){t=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";}r.setAttribute("data-theme",t);}catch(e){}})();</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>30 Second Timer — Free Online Countdown, One Tap | clocklab.net</title>
+  <meta name="description" content="A free 30 second timer that runs entirely in your browser. The duration arrives preset, so one tap starts the countdown and a tone marks zero.">
+  <link rel="canonical" href="https://clocklab.net/30-second-timer/">
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <meta name="theme-color" content="#15181c">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="clocklab.net">
+  <meta property="og:title" content="30 Second Timer — Free Online Countdown, One Tap | clocklab.net">
+  <meta property="og:description" content="A free 30 second timer that runs entirely in your browser. The duration arrives preset, so one tap starts the countdown and a tone marks zero.">
+  <meta property="og:url" content="https://clocklab.net/30-second-timer/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="30 Second Timer — Free Online Countdown, One Tap | clocklab.net">
+  <meta name="twitter:description" content="A free 30 second timer that runs entirely in your browser. The duration arrives preset, so one tap starts the countdown and a tone marks zero.">
+  <link rel="stylesheet" href="/assets/style.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"30 Second Timer \u2014 clocklab.net","url":"https://clocklab.net/30-second-timer/","applicationCategory":"UtilitiesApplication","operatingSystem":"Any (runs in browser)","description":"A free 30 second timer that runs entirely in your browser. The duration arrives preset, so one tap starts the countdown and a tone marks zero.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"publisher":{"@type":"Organization","name":"clocklab.net"}}</script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7560786263587509" crossorigin="anonymous"></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <a href="/" class="wordmark" data-panel-link=""><span class="tick">[</span>clocklab<span class="tick">]</span></a>
+      <button type="button" class="nav-toggle" id="nav-toggle" aria-expanded="false" aria-controls="tool-nav" aria-label="Toggle menu">☰</button>
+      <ul class="tool-nav" id="tool-nav">
+      <li><a href="/" data-panel-link="">Home</a></li>
+      <li><a href="/countdown-timer/" data-panel-link="countdown-timer">Countdown Timer</a></li>
+      <li><a href="/stopwatch/" data-panel-link="stopwatch">Stopwatch</a></li>
+      <li><a href="/pomodoro-timer/" data-panel-link="pomodoro-timer">Pomodoro Timer</a></li>
+      <li><a href="/alarm-clock/" data-panel-link="alarm-clock">Alarm Clock</a></li>
+      <li><a href="/interval-timer/" data-panel-link="interval-timer">Interval Timer</a></li>
+      <li><a href="/world-clock/" data-panel-link="world-clock">World Clock</a></li>
+      <li><a href="/timers/" aria-current="page">Timers</a></li>
+      </ul>
+      <div class="header-controls">
+        <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Toggle light and dark theme"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
+      </div>
+    </div>
+  </header>
+  <main>
+    <section class="panel">
+      <div class="wrap">
+        <div class="panel-head">
+          <h1 tabindex="-1">30 Second Timer</h1>
+          <a class="back-to-tools" href="/timers/">← All preset timers</a>
+        </div>
+        <p>Thirty seconds is the shortest interval most people can feel going wrong. It is the hold length taught for static stretching, because a muscle needs a few seconds of steady tension before it stops resisting and lengthens. It is the scrub time in handwashing guidance, the rinse printed on mouthwash bottles, and the work phase in most HIIT circuits. Counted in your head it tends to come out short, and always in the direction of less effort. Read off a clock instead, every round is the same length, which is the entire reason the interval gets specified at all.</p>
+
+    <div class="instrument" data-duration="30">
+      <div class="nameplate">
+        <span class="nameplate-label">30 Second Timer</span>
+        <span class="status-led" id="cd-status" data-state="idle">Idle</span>
+      </div>
+      <div class="dial-wrap">
+        <div class="dial-mount" id="cd-dial"></div>
+        <div class="screen">
+          <div class="readout" id="cd-readout">00:00:30</div>
+          <div class="readout-sub">HH&nbsp;:&nbsp;MM&nbsp;:&nbsp;SS</div>
+        </div>
+      </div>
+      <div class="set-row">
+        <div class="set-field"><label for="cd-h">Hours</label><input type="number" id="cd-h" min="0" max="23" value="0" inputmode="numeric"></div>
+        <div class="set-field"><label for="cd-m">Min</label><input type="number" id="cd-m" min="0" max="59" value="0" inputmode="numeric"></div>
+        <div class="set-field"><label for="cd-s">Sec</label><input type="number" id="cd-s" min="0" max="59" value="30" inputmode="numeric"></div>
+      </div>
+      <div class="controls-row">
+        <button type="button" class="ctrl-btn primary" id="cd-start">Start</button>
+        <button type="button" class="ctrl-btn" id="cd-pause" disabled>Pause</button>
+        <button type="button" class="ctrl-btn ghost" id="cd-reset">Reset</button>
+        <button type="button" class="ctrl-btn stop" id="cd-stop-alarm" hidden>Stop Alarm</button>
+      </div>
+      <div class="notify-row">
+        <input type="checkbox" id="cd-notify" data-notify-toggle>
+        <label for="cd-notify">Notify me when it's done</label>
+      </div>
+      <p class="notify-state" id="cd-notify-state" role="status"></p>
+      <p class="hint">Ends with an audible alarm — keep this tab's sound unmuted. A running countdown keeps counting in a background tab and picks itself back up if you reload.</p>
+    </div>
+
+        <p class="hint" style="margin-top:12px"><a href="?autostart=1">Open this page with the timer already running →</a> — handy as a bookmark, though your device only lets a page make a sound after you have tapped it at least once.</p>
+      </div>
+    </section>
+
+    <section class="content-section" id="how-it-works">
+      <div class="wrap">
+        <h2>Why 30 seconds</h2>
+        <p>At this length the start matters more than the finish. A circuit running twenty rounds of thirty seconds loses a full minute if each round begins three seconds late, so the page arrives with the duration already set and starts on a single tap. Every tick is derived from a real timestamp rather than counted by hand, which is why round nineteen is the same length as round one.</p>
+        <h3>What people set it for</h3>
+        <ul class="use-list">
+          <li>Timed handwashing at the sink</li>
+          <li>Holding a static stretch</li>
+          <li>Work intervals in a HIIT circuit</li>
+          <li>A mouthwash rinse</li>
+          <li>Plank and wall-sit holds</li>
+          <li>Watching an espresso shot pull</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="content-section">
+      <div class="wrap">
+        <h2>FAQ</h2>
+        <dl class="faq">
+        <dt>Why do so many instructions land on thirty seconds?</dt>
+        <dd>It is the shortest interval long enough for a physical process to finish and short enough to repeat without planning. Soap needs friction time, a stretched muscle needs a few seconds to release, and a circuit needs a work phase that can be run twenty times over. Anything shorter is hard to hold to consistently, and anything longer starts to need a rest of its own.</dd>
+        <dt>Can I count thirty seconds accurately in my head?</dt>
+        <dd>Rarely, and the error runs one way. Counting speeds up under exertion, which is exactly when thirty seconds tends to get counted, so the plank or the wall sit ends early. Saying one thousand between the numbers helps a little and still drifts. If the interval is the point of the exercise, read it off something external.</dd>
+        <dt>Will the countdown keep running if I switch to another tab?</dt>
+        <dd>Yes. Browsers throttle background JavaScript, which is how naive timers quietly lose seconds while you are elsewhere. This one runs its countdown in a Web Worker and derives each tick from a real timestamp, so the tab can sit in the background for the whole interval and the alarm still sounds at the right moment.</dd>
+        </dl>
+      </div>
+    </section>
+
+    <section class="content-section">
+      <div class="wrap">
+        <h2>Other preset timers</h2>
+        <div class="related-links">
+        <a href="/90-second-timer/">90 seconds →</a>
+        <a href="/2-minute-timer/">2 minutes →</a>
+        <a href="/3-minute-timer/">3 minutes →</a>
+        <a href="/5-minute-timer/">5 minutes →</a>
+        <a href="/10-minute-timer/">10 minutes →</a>
+        <a href="/15-minute-timer/">15 minutes →</a>
+        <a href="/20-minute-timer/">20 minutes →</a>
+        <a href="/25-minute-timer/">25 minutes →</a>
+        <a href="/30-minute-timer/">30 minutes →</a>
+        <a href="/45-minute-timer/">45 minutes →</a>
+        <a href="/1-hour-timer/">1 hour →</a>
+        <a href="/90-minute-timer/">90 minutes →</a>
+        <a href="/2-hour-timer/">2 hours →</a>
+        <a href="/egg-timer/">an egg timer →</a>
+        </div>
+        <div class="related-links" style="margin-top:12px">
+          <a href="/timers/">All preset timers →</a>
+          <a href="/countdown-timer/">Set any duration →</a>
+          <a href="/pomodoro-timer/">Pomodoro timer →</a>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer class="site-footer">
+    <div class="wrap">
+      <p class="footer-tag">clocklab.net — browser-only timers. Nothing you set here ever leaves this tab.</p>
+      <ul class="footer-links">
+        <li><a href="/privacy/">Privacy</a></li>
+        <li><a href="/terms/">Terms</a></li>
+      </ul>
+    </div>
+  </footer>
+<a href="https://erabb.it" class="erabbit-mark" aria-label="erabb.it"><img src="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐇</text></svg>" width="10" height="10" alt=""></a>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Why do so many instructions land on thirty seconds?","acceptedAnswer":{"@type":"Answer","text":"It is the shortest interval long enough for a physical process to finish and short enough to repeat without planning. Soap needs friction time, a stretched muscle needs a few seconds to release, and a circuit needs a work phase that can be run twenty times over. Anything shorter is hard to hold to consistently, and anything longer starts to need a rest of its own."}},{"@type":"Question","name":"Can I count thirty seconds accurately in my head?","acceptedAnswer":{"@type":"Answer","text":"Rarely, and the error runs one way. Counting speeds up under exertion, which is exactly when thirty seconds tends to get counted, so the plank or the wall sit ends early. Saying one thousand between the numbers helps a little and still drifts. If the interval is the point of the exercise, read it off something external."}},{"@type":"Question","name":"Will the countdown keep running if I switch to another tab?","acceptedAnswer":{"@type":"Answer","text":"Yes. Browsers throttle background JavaScript, which is how naive timers quietly lose seconds while you are elsewhere. This one runs its countdown in a Web Worker and derives each tick from a real timestamp, so the tab can sit in the background for the whole interval and the alarm still sounds at the right moment."}}]}</script>
+  <script src="/assets/dial.js"></script>
+  <script src="/assets/audio.js"></script>
+  <script src="/assets/timer-core.js"></script>
+  <script src="/assets/app.js"></script>
+</body>
+</html>

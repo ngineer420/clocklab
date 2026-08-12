@@ -1054,6 +1054,105 @@ button.ctrl-btn.ghost:hover {
   font-size: 1.4rem;
 }
 
+.content-section h3 {
+  font-size: 1rem;
+  margin: 26px 0 0;
+  color: var(--fg);
+}
+
+.content-section p {
+  color: var(--fg-dim);
+}
+
+/* ---------- preset timer pages ---------- */
+
+.preset-row {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  margin: 0 0 16px;
+}
+
+.preset-btn {
+  display: inline-flex;
+  align-items: baseline;
+  gap: 8px;
+}
+
+.preset-time {
+  font-family: var(--font-mono);
+  font-variant-numeric: tabular-nums;
+  font-size: 12px;
+  color: var(--fg-dim);
+}
+
+/* The chosen preset stays lit, because after it starts the readout is the
+   only other thing telling you which one you tapped. */
+.preset-btn.is-active,
+.preset-btn.is-active .preset-time {
+  border-color: var(--amber);
+  color: var(--amber);
+}
+
+.use-list {
+  margin: 10px 0 0;
+  padding-left: 20px;
+  color: var(--fg-dim);
+}
+
+.use-list li {
+  margin-bottom: 6px;
+}
+
+/* Reference tables in page copy (egg timings). Scrolls inside its own box so
+   a narrow phone never makes the whole page slide sideways. */
+.data-table {
+  margin-top: 14px;
+  overflow-x: auto;
+  border: 1px solid var(--line);
+  border-radius: var(--radius-sm);
+}
+
+.data-table table {
+  width: 100%;
+  min-width: 420px;
+  border-collapse: collapse;
+  font-size: 13px;
+  font-variant-numeric: tabular-nums;
+}
+
+.data-table th {
+  background: var(--bg-raised);
+  text-align: right;
+  font-family: var(--font-display);
+  font-size: 10px;
+  letter-spacing: 0.1em;
+  text-transform: uppercase;
+  color: var(--fg-dim);
+  padding: 9px 12px;
+  border-bottom: 1px solid var(--line);
+}
+
+.data-table td {
+  text-align: right;
+  padding: 8px 12px;
+  border-bottom: 1px solid var(--line);
+  color: var(--fg-dim);
+}
+
+.data-table th:first-child,
+.data-table td:first-child {
+  text-align: left;
+}
+
+.data-table td:first-child {
+  color: var(--fg);
+}
+
+.data-table tr:last-child td {
+  border-bottom: none;
+}
+
 .faq dt {
   font-weight: 700;
   margin-top: 16px;

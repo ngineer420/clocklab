@@ -1,0 +1,161 @@
+<!doctype html>
+<html lang="en">
+<head>
+  <script>(function(){try{var r=document.documentElement;var t=localStorage.getItem("clocklab-theme");if(!t){t=window.matchMedia("(prefers-color-scheme: dark)").matches?"dark":"light";}r.setAttribute("data-theme",t);}catch(e){}})();</script>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>30 Minute Timer — Free Online Countdown, One Tap | clocklab.net</title>
+  <meta name="description" content="Free 30 minute timer that runs in the browser with no install. One tap starts a 30:00 countdown with an alarm at zero, for cooking, workouts and study.">
+  <link rel="canonical" href="https://clocklab.net/30-minute-timer/">
+  <link rel="icon" href="/assets/favicon.svg" type="image/svg+xml">
+  <meta name="theme-color" content="#15181c">
+  <meta property="og:type" content="website">
+  <meta property="og:site_name" content="clocklab.net">
+  <meta property="og:title" content="30 Minute Timer — Free Online Countdown, One Tap | clocklab.net">
+  <meta property="og:description" content="Free 30 minute timer that runs in the browser with no install. One tap starts a 30:00 countdown with an alarm at zero, for cooking, workouts and study.">
+  <meta property="og:url" content="https://clocklab.net/30-minute-timer/">
+  <meta name="twitter:card" content="summary">
+  <meta name="twitter:title" content="30 Minute Timer — Free Online Countdown, One Tap | clocklab.net">
+  <meta name="twitter:description" content="Free 30 minute timer that runs in the browser with no install. One tap starts a 30:00 countdown with an alarm at zero, for cooking, workouts and study.">
+  <link rel="stylesheet" href="/assets/style.css">
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"WebApplication","name":"30 Minute Timer \u2014 clocklab.net","url":"https://clocklab.net/30-minute-timer/","applicationCategory":"UtilitiesApplication","operatingSystem":"Any (runs in browser)","description":"Free 30 minute timer that runs in the browser with no install. One tap starts a 30:00 countdown with an alarm at zero, for cooking, workouts and study.","offers":{"@type":"Offer","price":"0","priceCurrency":"USD"},"publisher":{"@type":"Organization","name":"clocklab.net"}}</script>
+  <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7560786263587509" crossorigin="anonymous"></script>
+</head>
+<body>
+  <header class="site-header">
+    <div class="wrap">
+      <a href="/" class="wordmark" data-panel-link=""><span class="tick">[</span>clocklab<span class="tick">]</span></a>
+      <button type="button" class="nav-toggle" id="nav-toggle" aria-expanded="false" aria-controls="tool-nav" aria-label="Toggle menu">☰</button>
+      <ul class="tool-nav" id="tool-nav">
+      <li><a href="/" data-panel-link="">Home</a></li>
+      <li><a href="/countdown-timer/" data-panel-link="countdown-timer">Countdown Timer</a></li>
+      <li><a href="/stopwatch/" data-panel-link="stopwatch">Stopwatch</a></li>
+      <li><a href="/pomodoro-timer/" data-panel-link="pomodoro-timer">Pomodoro Timer</a></li>
+      <li><a href="/alarm-clock/" data-panel-link="alarm-clock">Alarm Clock</a></li>
+      <li><a href="/interval-timer/" data-panel-link="interval-timer">Interval Timer</a></li>
+      <li><a href="/world-clock/" data-panel-link="world-clock">World Clock</a></li>
+      <li><a href="/timers/" aria-current="page">Timers</a></li>
+      </ul>
+      <div class="header-controls">
+        <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Toggle light and dark theme"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
+      </div>
+    </div>
+  </header>
+  <main>
+    <section class="panel">
+      <div class="wrap">
+        <div class="panel-head">
+          <h1 tabindex="-1">30 Minute Timer</h1>
+          <a class="back-to-tools" href="/timers/">← All preset timers</a>
+        </div>
+        <p>A tray goes in the oven and someone says thirty minutes. The number is so ordinary that it barely registers as a choice, which is exactly why it gets set more than almost anything else. It is the default slot in calendar software, the usual cap on a screen-time deal, a common first proving stage for dough, and the length of a workout that has to happen before work. Half an hour is short enough that nobody argues about it and long enough for something to actually finish inside it. The risk sits in that same ordinariness: thirty minutes judged by memory has a habit of becoming forty.</p>
+
+    <div class="instrument" data-duration="1800">
+      <div class="nameplate">
+        <span class="nameplate-label">30 Minute Timer</span>
+        <span class="status-led" id="cd-status" data-state="idle">Idle</span>
+      </div>
+      <div class="dial-wrap">
+        <div class="dial-mount" id="cd-dial"></div>
+        <div class="screen">
+          <div class="readout" id="cd-readout">00:30:00</div>
+          <div class="readout-sub">HH&nbsp;:&nbsp;MM&nbsp;:&nbsp;SS</div>
+        </div>
+      </div>
+      <div class="set-row">
+        <div class="set-field"><label for="cd-h">Hours</label><input type="number" id="cd-h" min="0" max="23" value="0" inputmode="numeric"></div>
+        <div class="set-field"><label for="cd-m">Min</label><input type="number" id="cd-m" min="0" max="59" value="30" inputmode="numeric"></div>
+        <div class="set-field"><label for="cd-s">Sec</label><input type="number" id="cd-s" min="0" max="59" value="0" inputmode="numeric"></div>
+      </div>
+      <div class="controls-row">
+        <button type="button" class="ctrl-btn primary" id="cd-start">Start</button>
+        <button type="button" class="ctrl-btn" id="cd-pause" disabled>Pause</button>
+        <button type="button" class="ctrl-btn ghost" id="cd-reset">Reset</button>
+        <button type="button" class="ctrl-btn stop" id="cd-stop-alarm" hidden>Stop Alarm</button>
+      </div>
+      <div class="notify-row">
+        <input type="checkbox" id="cd-notify" data-notify-toggle>
+        <label for="cd-notify">Notify me when it's done</label>
+      </div>
+      <p class="notify-state" id="cd-notify-state" role="status"></p>
+      <p class="hint">Ends with an audible alarm — keep this tab's sound unmuted. A running countdown keeps counting in a background tab and picks itself back up if you reload.</p>
+    </div>
+
+        <p class="hint" style="margin-top:12px"><a href="?autostart=1">Open this page with the timer already running →</a> — handy as a bookmark, though your device only lets a page make a sound after you have tapped it at least once.</p>
+      </div>
+    </section>
+
+    <section class="content-section" id="how-it-works">
+      <div class="wrap">
+        <h2>Why 30 minutes</h2>
+        <p>Thirty also splits cleanly, which is where a lot of its use comes from. Two fifteens make a warm-up and a working set, three tens make a rotation of exercises or subjects, six fives make a drill. This page counts the whole block down in one run and rings once at the end. If you want the internal switches marked as well, the interval timer alternates work and rest rounds for you.</p>
+        <h3>What people set it for</h3>
+        <ul class="use-list">
+          <li>A half-hour workout</li>
+          <li>Roasting and baking stages</li>
+          <li>Boxing a meeting to its slot</li>
+          <li>A homework or revision block</li>
+          <li>Screen-time limits for children</li>
+          <li>A first proving stage for dough</li>
+        </ul>
+      </div>
+    </section>
+
+    <section class="content-section">
+      <div class="wrap">
+        <h2>FAQ</h2>
+        <dl class="faq">
+        <dt>Can I split thirty minutes into two halves?</dt>
+        <dd>Not on this page, which counts one continuous block down to zero. Run it twice for two fifteen-minute halves, or use the interval timer, which alternates a work length and a rest length for a set number of rounds and sounds a chime at every switch. For a plain half hour with a single alarm at the end, this page is the simpler option.</dd>
+        <dt>Why not just use the oven timer?</dt>
+        <dd>Oven timers only count for the oven, and most of them only run one thing at a time. A browser timer sits wherever you already are, can be started from a phone propped against the counter, and leaves the appliance dial free for whatever it was already timing. Nothing is installed and nothing is stored on a server, so any device that opens the page has it.</dd>
+        <dt>Is it suitable for a child screen-time limit?</dt>
+        <dd>It works for that, with one caveat: the alarm sounds in the tab running it, so a muted or closed tab rings nothing. On the other hand, nothing about the session is uploaded or kept on a server, so there is no account to make, no history to manage and nothing to sign into. It is a countdown that anyone can start with one tap.</dd>
+        </dl>
+      </div>
+    </section>
+
+    <section class="content-section">
+      <div class="wrap">
+        <h2>Other preset timers</h2>
+        <div class="related-links">
+        <a href="/30-second-timer/">30 seconds →</a>
+        <a href="/90-second-timer/">90 seconds →</a>
+        <a href="/2-minute-timer/">2 minutes →</a>
+        <a href="/3-minute-timer/">3 minutes →</a>
+        <a href="/5-minute-timer/">5 minutes →</a>
+        <a href="/10-minute-timer/">10 minutes →</a>
+        <a href="/15-minute-timer/">15 minutes →</a>
+        <a href="/20-minute-timer/">20 minutes →</a>
+        <a href="/25-minute-timer/">25 minutes →</a>
+        <a href="/45-minute-timer/">45 minutes →</a>
+        <a href="/1-hour-timer/">1 hour →</a>
+        <a href="/90-minute-timer/">90 minutes →</a>
+        <a href="/2-hour-timer/">2 hours →</a>
+        <a href="/egg-timer/">an egg timer →</a>
+        </div>
+        <div class="related-links" style="margin-top:12px">
+          <a href="/timers/">All preset timers →</a>
+          <a href="/countdown-timer/">Set any duration →</a>
+          <a href="/pomodoro-timer/">Pomodoro timer →</a>
+        </div>
+      </div>
+    </section>
+  </main>
+  <footer class="site-footer">
+    <div class="wrap">
+      <p class="footer-tag">clocklab.net — browser-only timers. Nothing you set here ever leaves this tab.</p>
+      <ul class="footer-links">
+        <li><a href="/privacy/">Privacy</a></li>
+        <li><a href="/terms/">Terms</a></li>
+      </ul>
+    </div>
+  </footer>
+<a href="https://erabb.it" class="erabbit-mark" aria-label="erabb.it"><img src="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐇</text></svg>" width="10" height="10" alt=""></a>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"Can I split thirty minutes into two halves?","acceptedAnswer":{"@type":"Answer","text":"Not on this page, which counts one continuous block down to zero. Run it twice for two fifteen-minute halves, or use the interval timer, which alternates a work length and a rest length for a set number of rounds and sounds a chime at every switch. For a plain half hour with a single alarm at the end, this page is the simpler option."}},{"@type":"Question","name":"Why not just use the oven timer?","acceptedAnswer":{"@type":"Answer","text":"Oven timers only count for the oven, and most of them only run one thing at a time. A browser timer sits wherever you already are, can be started from a phone propped against the counter, and leaves the appliance dial free for whatever it was already timing. Nothing is installed and nothing is stored on a server, so any device that opens the page has it."}},{"@type":"Question","name":"Is it suitable for a child screen-time limit?","acceptedAnswer":{"@type":"Answer","text":"It works for that, with one caveat: the alarm sounds in the tab running it, so a muted or closed tab rings nothing. On the other hand, nothing about the session is uploaded or kept on a server, so there is no account to make, no history to manage and nothing to sign into. It is a countdown that anyone can start with one tap."}}]}</script>
+  <script src="/assets/dial.js"></script>
+  <script src="/assets/audio.js"></script>
+  <script src="/assets/timer-core.js"></script>
+  <script src="/assets/app.js"></script>
+</body>
+</html>
