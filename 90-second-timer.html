@@ -22,26 +22,44 @@
   <script async src="https://pagead2.googlesyndication.com/pagead/js/adsbygoogle.js?client=ca-pub-7560786263587509" crossorigin="anonymous"></script>
 </head>
 <body>
+  <a class="skip-link" href="#main">Skip to the tool</a>
   <header class="site-header">
     <div class="wrap">
       <a href="/" class="wordmark" data-panel-link=""><span class="tick">[</span>clocklab<span class="tick">]</span></a>
-      <button type="button" class="nav-toggle" id="nav-toggle" aria-expanded="false" aria-controls="tool-nav" aria-label="Toggle menu">☰</button>
-      <ul class="tool-nav" id="tool-nav">
-      <li><a href="/" data-panel-link="">Home</a></li>
-      <li><a href="/countdown-timer/" data-panel-link="countdown-timer">Countdown Timer</a></li>
-      <li><a href="/stopwatch/" data-panel-link="stopwatch">Stopwatch</a></li>
-      <li><a href="/pomodoro-timer/" data-panel-link="pomodoro-timer">Pomodoro Timer</a></li>
-      <li><a href="/alarm-clock/" data-panel-link="alarm-clock">Alarm Clock</a></li>
-      <li><a href="/interval-timer/" data-panel-link="interval-timer">Interval Timer</a></li>
-      <li><a href="/world-clock/" data-panel-link="world-clock">World Clock</a></li>
-      <li><a href="/timers/" aria-current="page">Timers</a></li>
-      </ul>
       <div class="header-controls">
         <button type="button" class="theme-toggle" id="theme-toggle" aria-label="Toggle light and dark theme"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg></button>
       </div>
     </div>
   </header>
-  <main>
+  <nav class="toolbar" aria-label="Tools">
+    <details class="tb-menu">
+      <summary class="tb-trigger" aria-label="All 6 tools">
+        <span class="tb-glyph" aria-hidden="true">&#9636;</span>
+        <span class="tb-label">All 6<span class="tb-label-long"> tools</span></span>
+      </summary>
+      <div class="tb-sheet is-flat">
+        <ul>
+          <li><a href="/countdown-timer/" aria-current="true">Countdown Timer</a></li>
+          <li><a href="/stopwatch/">Stopwatch</a></li>
+          <li><a href="/pomodoro-timer/">Pomodoro Timer</a></li>
+          <li><a href="/alarm-clock/">Alarm Clock</a></li>
+          <li><a href="/interval-timer/">Interval Timer</a></li>
+          <li><a href="/world-clock/">World Clock</a></li>
+        </ul>
+        <p class="tb-hub"><a href="/timers/">All 15 preset timers →</a></p>
+      </div>
+    </details>
+    <div class="tb-scrim"></div>
+    <ul class="tb-rail">
+      <li><a href="/countdown-timer/" aria-current="true">Countdown</a></li>
+      <li><a href="/stopwatch/">Stopwatch</a></li>
+      <li><a href="/pomodoro-timer/">Pomodoro</a></li>
+      <li><a href="/alarm-clock/">Alarm</a></li>
+      <li><a href="/interval-timer/">Interval</a></li>
+      <li><a href="/world-clock/">World Clock</a></li>
+    </ul>
+  </nav>
+  <main id="main">
     <section class="panel">
       <div class="wrap">
         <div class="panel-head">
@@ -79,6 +97,27 @@
       </div>
       <p class="notify-state" id="cd-notify-state" role="status"></p>
       <p class="hint">Ends with an audible alarm — keep this tab's sound unmuted. A running countdown keeps counting in a background tab and picks itself back up if you reload.</p>
+      <nav class="preset-chips" aria-label="Preset durations">
+        <span class="preset-chips-label" id="preset-chips-label">Preset lengths</span>
+        <ul aria-labelledby="preset-chips-label">
+          <li><a href="/countdown-timer/">Any length</a></li>
+          <li><a href="/30-second-timer/">30 sec</a></li>
+          <li><a href="/90-second-timer/" aria-current="page">90 sec</a></li>
+          <li><a href="/2-minute-timer/">2 min</a></li>
+          <li><a href="/3-minute-timer/">3 min</a></li>
+          <li><a href="/5-minute-timer/">5 min</a></li>
+          <li><a href="/10-minute-timer/">10 min</a></li>
+          <li><a href="/15-minute-timer/">15 min</a></li>
+          <li><a href="/20-minute-timer/">20 min</a></li>
+          <li><a href="/25-minute-timer/">25 min</a></li>
+          <li><a href="/30-minute-timer/">30 min</a></li>
+          <li><a href="/45-minute-timer/">45 min</a></li>
+          <li><a href="/1-hour-timer/">1 hr</a></li>
+          <li><a href="/90-minute-timer/">90 min</a></li>
+          <li><a href="/2-hour-timer/">2 hr</a></li>
+          <li><a href="/egg-timer/">Egg</a></li>
+        </ul>
+      </nav>
     </div>
 
         <p class="hint" style="margin-top:12px"><a href="?autostart=1">Open this page with the timer already running →</a> — handy as a bookmark, though your device only lets a page make a sound after you have tapped it at least once.</p>
