@@ -84,7 +84,9 @@
         <button type="button" class="ctrl-btn primary" id="sw-start">Start</button>
         <button type="button" class="ctrl-btn" id="sw-lap" disabled>Lap</button>
         <button type="button" class="ctrl-btn ghost" id="sw-reset" disabled>Reset</button>
+        <button type="button" class="ctrl-btn ghost room-btn" data-room-mode="stopwatch" aria-pressed="false">Room mode</button>
       </div>
+      <p class="wake-note" data-wake-note role="status" hidden><span class="wake-dot" aria-hidden="true"></span>Screen kept awake while this runs</p>
       <div class="lap-table">
         <table>
           <thead><tr><th>Lap</th><th>Split</th><th class="delta">+/-</th></tr></thead>
@@ -123,6 +125,8 @@
         <dd>Yes — Lap only records a split, it never pauses or resets the running time.</dd>
         <dt>Does it show hours for long runs?</dt>
         <dd>Yes, the readout is always HH:MM:SS.CS, so multi-hour sessions still read correctly.</dd>
+        <dt>Can I read the stopwatch from across the room?</dt>
+        <dd>Tap Room mode. The readout fills the screen, the page chrome disappears, and the lap table stays on as a compact running column so a coach or a teacher still sees the splits. While Room mode is on clocklab holds a screen wake lock so the device does not dim between laps, and releases it the moment you stop the clock.</dd>
         </dl>
       </div>
     </section>
@@ -148,7 +152,7 @@
     </div>
   </footer>
 <a href="https://erabb.it" class="erabbit-mark" aria-label="erabb.it"><img src="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>🐇</text></svg>" width="10" height="10" alt=""></a>
-  <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"How accurate is the timing?","acceptedAnswer":{"@type":"Answer","text":"The stopwatch reads the actual elapsed time from a timestamp on every render rather than incrementing a counter, so pausing, resuming, or a slow/busy browser tab never causes drift \u2014 the displayed time is always the real elapsed time."}},{"@type":"Question","name":"What do the highlighted lap rows mean?","acceptedAnswer":{"@type":"Answer","text":"The lap with the shortest gap from the one before it is highlighted in cyan (your best split); the longest gap is highlighted in red (your slowest) \u2014 useful for spotting your fastest and slowest reps at a glance."}},{"@type":"Question","name":"Can I lap without stopping the clock?","acceptedAnswer":{"@type":"Answer","text":"Yes \u2014 Lap only records a split, it never pauses or resets the running time."}},{"@type":"Question","name":"Does it show hours for long runs?","acceptedAnswer":{"@type":"Answer","text":"Yes, the readout is always HH:MM:SS.CS, so multi-hour sessions still read correctly."}}]}</script>
+  <script type="application/ld+json">{"@context":"https://schema.org","@type":"FAQPage","mainEntity":[{"@type":"Question","name":"How accurate is the timing?","acceptedAnswer":{"@type":"Answer","text":"The stopwatch reads the actual elapsed time from a timestamp on every render rather than incrementing a counter, so pausing, resuming, or a slow/busy browser tab never causes drift \u2014 the displayed time is always the real elapsed time."}},{"@type":"Question","name":"What do the highlighted lap rows mean?","acceptedAnswer":{"@type":"Answer","text":"The lap with the shortest gap from the one before it is highlighted in cyan (your best split); the longest gap is highlighted in red (your slowest) \u2014 useful for spotting your fastest and slowest reps at a glance."}},{"@type":"Question","name":"Can I lap without stopping the clock?","acceptedAnswer":{"@type":"Answer","text":"Yes \u2014 Lap only records a split, it never pauses or resets the running time."}},{"@type":"Question","name":"Does it show hours for long runs?","acceptedAnswer":{"@type":"Answer","text":"Yes, the readout is always HH:MM:SS.CS, so multi-hour sessions still read correctly."}},{"@type":"Question","name":"Can I read the stopwatch from across the room?","acceptedAnswer":{"@type":"Answer","text":"Tap Room mode. The readout fills the screen, the page chrome disappears, and the lap table stays on as a compact running column so a coach or a teacher still sees the splits. While Room mode is on clocklab holds a screen wake lock so the device does not dim between laps, and releases it the moment you stop the clock."}}]}</script>
   <script src="/assets/dial.js"></script>
   <script src="/assets/audio.js"></script>
   <script src="/assets/timer-core.js"></script>

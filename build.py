@@ -89,7 +89,9 @@ def countdown_workspace(seconds=300, preset=False, label="Countdown Timer",
         <button type="button" class="ctrl-btn" id="cd-pause" disabled>Pause</button>
         <button type="button" class="ctrl-btn ghost" id="cd-reset">Reset</button>
         <button type="button" class="ctrl-btn stop" id="cd-stop-alarm" hidden>Stop Alarm</button>
+        <button type="button" class="ctrl-btn ghost room-btn" data-room-mode="countdown" aria-pressed="false">Room mode</button>
       </div>
+      <p class="wake-note" data-wake-note role="status" hidden><span class="wake-dot" aria-hidden="true"></span>Screen kept awake while this runs</p>
       <div class="notify-row">
         <input type="checkbox" id="cd-notify" data-notify-toggle>
         <label for="cd-notify">Notify me when it's done</label>
@@ -145,6 +147,7 @@ TOOLS = [
             ("What happens if I reload the page mid-countdown?", "It resumes. clocklab saves the countdown's start timestamp and its total duration to your browser's local storage, so on reload it works out the remaining time against the real clock rather than from wherever the on-screen counter had got to. If the countdown ran out while the page was closed, it says so on load instead of pretending it's still going."),
             ("Can I pause partway through and come back later?", "Yes — Pause holds the exact remaining time, and it survives a reload or a browser restart too. Switching to another tool, another tab or another app doesn't lose the countdown's place."),
             ("Is there a maximum duration?", "Up to 23 hours, 59 minutes and 59 seconds in one countdown — plenty for cooking, workouts, presentations or focus blocks."),
+            ("What does Room mode do, and will it stop my phone sleeping?", "Room mode blows the readout up to fill the screen — page chrome hidden, digits sized to be read from the back of a room — and while it is on clocklab also asks the browser for a screen wake lock so the device does not dim and lock mid-countdown. The lock is released the moment you pause, reset, or dismiss the alarm, so a phone left on a bench does not sit lit all afternoon; a small “Screen kept awake” line appears whenever the lock is actually being held. Not every browser offers that API, and where it is missing Room mode still lays out the same, it simply cannot override the device\u2019s own sleep timer."),
         ],
         related=["pomodoro-timer", "interval-timer", "alarm-clock"],
         workspace=countdown_workspace(),
@@ -169,6 +172,7 @@ TOOLS = [
             ("What do the highlighted lap rows mean?", "The lap with the shortest gap from the one before it is highlighted in cyan (your best split); the longest gap is highlighted in red (your slowest) — useful for spotting your fastest and slowest reps at a glance."),
             ("Can I lap without stopping the clock?", "Yes — Lap only records a split, it never pauses or resets the running time."),
             ("Does it show hours for long runs?", "Yes, the readout is always HH:MM:SS.CS, so multi-hour sessions still read correctly."),
+            ("Can I read the stopwatch from across the room?", "Tap Room mode. The readout fills the screen, the page chrome disappears, and the lap table stays on as a compact running column so a coach or a teacher still sees the splits. While Room mode is on clocklab holds a screen wake lock so the device does not dim between laps, and releases it the moment you stop the clock."),
         ],
         related=["interval-timer", "countdown-timer", "pomodoro-timer"],
         workspace="""
@@ -188,7 +192,9 @@ TOOLS = [
         <button type="button" class="ctrl-btn primary" id="sw-start">Start</button>
         <button type="button" class="ctrl-btn" id="sw-lap" disabled>Lap</button>
         <button type="button" class="ctrl-btn ghost" id="sw-reset" disabled>Reset</button>
+        <button type="button" class="ctrl-btn ghost room-btn" data-room-mode="stopwatch" aria-pressed="false">Room mode</button>
       </div>
+      <p class="wake-note" data-wake-note role="status" hidden><span class="wake-dot" aria-hidden="true"></span>Screen kept awake while this runs</p>
       <div class="lap-table">
         <table>
           <thead><tr><th>Lap</th><th>Split</th><th class="delta">+/-</th></tr></thead>
@@ -219,6 +225,7 @@ TOOLS = [
             ("Can I change the lengths mid-session?", "The number fields are editable any time the timer isn't running; changes take effect the next time you start or on the next phase change. They're locked while a phase is actively counting down to avoid accidentally resetting your progress."),
             ("What's the difference between a short and long break?", "Short breaks happen after every focus session; the long break replaces a short break once you've completed the configured number of sessions (4, by default) — the classic Pomodoro rhythm."),
             ("Does Skip phase count against my session total?", "Yes — skipping advances the cycle exactly like a natural phase completion, just without waiting out the clock or playing the completion chime."),
+            ("What does Room mode show?", "Room mode is laid out per instrument rather than one rule for all four, so the pomodoro keeps the phase name and the session dots under a screen-filling readout instead of dropping them. It also holds a screen wake lock while a phase is actually counting — released on pause and on reset — and shows a “Screen kept awake” line for as long as the lock is held."),
             ("Will it keep going if I switch tabs or reload?", "Both. The countdown runs in a Web Worker, so a hidden tab keeps switching phases on time rather than freezing until you look at it, and ticking “Notify me at every phase change” posts a system notification so you actually hear about it. The running cycle is also saved to local storage — reload mid-session and clocklab works out from the clock which phase you should be in now, and drops you there."),
         ],
         related=["interval-timer", "countdown-timer", "stopwatch"],
@@ -247,7 +254,9 @@ TOOLS = [
         <button type="button" class="ctrl-btn" id="pd-pause" disabled>Pause</button>
         <button type="button" class="ctrl-btn ghost" id="pd-skip">Skip phase</button>
         <button type="button" class="ctrl-btn ghost" id="pd-reset">Reset</button>
+        <button type="button" class="ctrl-btn ghost room-btn" data-room-mode="pomodoro" aria-pressed="false">Room mode</button>
       </div>
+      <p class="wake-note" data-wake-note role="status" hidden><span class="wake-dot" aria-hidden="true"></span>Screen kept awake while this runs</p>
       <div class="notify-row">
         <input type="checkbox" id="pd-notify" data-notify-toggle>
         <label for="pd-notify">Notify me at every phase change</label>
@@ -332,6 +341,7 @@ TOOLS = [
             ("Does Rest count as part of the round?", "Yes — each round is one Work phase followed by one Rest phase (except the very last round, which ends after Work with no trailing rest)."),
             ("Can I pause mid-round?", "Yes — Pause holds the exact remaining time in the current phase; Start resumes it from exactly there."),
             ("How is this different from the Pomodoro Timer?", "Pomodoro is built around longer focus/break cycles (minutes) with a long-break rhythm for deep work; the Interval Timer is built around short work/rest bursts (seconds) for a fixed number of rounds — classic HIIT structure."),
+            ("Will the screen stay on through the workout?", "Tap Room mode before you start. It fills the screen with the round clock and the work/rest phase and asks the browser for a screen wake lock, so the phone does not dim and lock between rounds. The lock is dropped as soon as you pause, reset, or the last round finishes — a gym phone lit until the battery dies is a worse problem than the one being fixed. Where the browser has no wake lock API the button still works; it just cannot stop the device sleeping on its own."),
             ("What if I lock my phone or switch apps mid-workout?", "The rounds are driven by a Web Worker reading the real clock, so the timer keeps advancing rather than freezing when the tab goes to the background, and it picks up mid-workout if the page reloads. Tick “Notify me at every round change” to get a system notification at each switch — useful when the screen is off."),
         ],
         related=["pomodoro-timer", "stopwatch", "countdown-timer"],
@@ -358,7 +368,9 @@ TOOLS = [
         <button type="button" class="ctrl-btn primary" id="iv-start">Start</button>
         <button type="button" class="ctrl-btn" id="iv-pause" disabled>Pause</button>
         <button type="button" class="ctrl-btn ghost" id="iv-reset">Reset</button>
+        <button type="button" class="ctrl-btn ghost room-btn" data-room-mode="interval" aria-pressed="false">Room mode</button>
       </div>
+      <p class="wake-note" data-wake-note role="status" hidden><span class="wake-dot" aria-hidden="true"></span>Screen kept awake while this runs</p>
       <div class="notify-row">
         <input type="checkbox" id="iv-notify" data-notify-toggle>
         <label for="iv-notify">Notify me at every round change</label>
