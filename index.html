@@ -141,7 +141,9 @@
         <button type="button" class="ctrl-btn" id="cd-pause" disabled>Pause</button>
         <button type="button" class="ctrl-btn ghost" id="cd-reset">Reset</button>
         <button type="button" class="ctrl-btn stop" id="cd-stop-alarm" hidden>Stop Alarm</button>
+        <button type="button" class="ctrl-btn ghost room-btn" data-room-mode="countdown" aria-pressed="false">Room mode</button>
       </div>
+      <p class="wake-note" data-wake-note role="status" hidden><span class="wake-dot" aria-hidden="true"></span>Screen kept awake while this runs</p>
       <div class="notify-row">
         <input type="checkbox" id="cd-notify" data-notify-toggle>
         <label for="cd-notify">Notify me when it's done</label>
@@ -177,7 +179,9 @@
         <button type="button" class="ctrl-btn primary" id="sw-start">Start</button>
         <button type="button" class="ctrl-btn" id="sw-lap" disabled>Lap</button>
         <button type="button" class="ctrl-btn ghost" id="sw-reset" disabled>Reset</button>
+        <button type="button" class="ctrl-btn ghost room-btn" data-room-mode="stopwatch" aria-pressed="false">Room mode</button>
       </div>
+      <p class="wake-note" data-wake-note role="status" hidden><span class="wake-dot" aria-hidden="true"></span>Screen kept awake while this runs</p>
       <div class="lap-table">
         <table>
           <thead><tr><th>Lap</th><th>Split</th><th class="delta">+/-</th></tr></thead>
@@ -222,7 +226,9 @@
         <button type="button" class="ctrl-btn" id="pd-pause" disabled>Pause</button>
         <button type="button" class="ctrl-btn ghost" id="pd-skip">Skip phase</button>
         <button type="button" class="ctrl-btn ghost" id="pd-reset">Reset</button>
+        <button type="button" class="ctrl-btn ghost room-btn" data-room-mode="pomodoro" aria-pressed="false">Room mode</button>
       </div>
+      <p class="wake-note" data-wake-note role="status" hidden><span class="wake-dot" aria-hidden="true"></span>Screen kept awake while this runs</p>
       <div class="notify-row">
         <input type="checkbox" id="pd-notify" data-notify-toggle>
         <label for="pd-notify">Notify me at every phase change</label>
@@ -306,7 +312,9 @@
         <button type="button" class="ctrl-btn primary" id="iv-start">Start</button>
         <button type="button" class="ctrl-btn" id="iv-pause" disabled>Pause</button>
         <button type="button" class="ctrl-btn ghost" id="iv-reset">Reset</button>
+        <button type="button" class="ctrl-btn ghost room-btn" data-room-mode="interval" aria-pressed="false">Room mode</button>
       </div>
+      <p class="wake-note" data-wake-note role="status" hidden><span class="wake-dot" aria-hidden="true"></span>Screen kept awake while this runs</p>
       <div class="notify-row">
         <input type="checkbox" id="iv-notify" data-notify-toggle>
         <label for="iv-notify">Notify me at every round change</label>

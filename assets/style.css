@@ -1477,3 +1477,298 @@ button.ctrl-btn.ghost:hover {
   clip: rect(0 0 0 0);
   white-space: nowrap;
 }
+
+/* ================================ ROOM MODE ===============================
+   Keyed off `body.room-mode`, never `:fullscreen`. iOS Safari has never
+   implemented Element.requestFullscreen() for anything but <video>, and a
+   phone propped up at the side of a gym or on a classroom desk is precisely
+   the case this exists for — a layout that only matched :fullscreen would
+   silently never apply there. requestFullscreen() is layered on top in JS as
+   an enhancement; every rule below works with zero API support.
+
+   `.room-ancestor` is painted up the chain from the live instrument to
+   <main> by app.js, so the chrome and every sibling section can be hidden
+   without a per-page selector list and without :has(). */
+
+body.room-mode {
+  overflow: hidden;
+}
+
+body.room-mode .skip-link,
+body.room-mode .site-header,
+body.room-mode .toolbar,
+body.room-mode .tb-scrim,
+body.room-mode .site-footer,
+body.room-mode .erabbit-mark,
+body.room-mode main > *:not(.room-ancestor),
+body.room-mode .room-ancestor > *:not(.room-ancestor):not(.is-room) {
+  display: none !important;
+}
+
+body.room-mode .room-ancestor {
+  margin: 0;
+  padding: 0;
+  max-width: none;
+  width: auto;
+}
+
+.instrument.is-room {
+  position: fixed;
+  inset: 0;
+  z-index: 90;
+  margin: 0;
+  border: 0;
+  border-radius: 0;
+  box-shadow: none;
+  background: var(--bg);
+  background-image: none;
+  padding-block: max(10px, env(safe-area-inset-top)) max(10px, env(safe-area-inset-bottom));
+  padding-inline: clamp(6px, 2.4vw, 32px);
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  gap: clamp(8px, 2.2vh, 26px);
+  overflow: hidden;
+  transition: background-color 0.2s ease;
+}
+
+/* Zero, seen from the back of the room. A muted phone still announces the
+   finish, because the whole surface turns the alert colour. */
+.instrument.is-room.is-room-alert {
+  background: color-mix(in srgb, var(--red) 30%, var(--bg));
+}
+.instrument.is-room.is-room-alert .screen {
+  background: radial-gradient(
+    circle at 50% 40%,
+    color-mix(in srgb, var(--red) 42%, var(--screen)),
+    color-mix(in srgb, var(--red) 22%, var(--screen)) 78%
+  );
+}
+.instrument.is-room.is-room-alert .readout {
+  color: var(--red);
+  text-shadow: 0 0 30px rgba(var(--red-rgb), 0.7);
+}
+
+/* The nameplate stays as the only chrome: it carries the instrument name and
+   the running/paused LED, which is exactly what someone glancing over wants. */
+.instrument.is-room .nameplate {
+  margin: 0;
+  padding: 0 0 clamp(6px, 1.4vh, 12px);
+  width: min(100%, 720px);
+  flex: 0 0 auto;
+}
+
+/* The dial is a desk-scale instrument; at room scale the digits are the
+   whole point, so the bezel goes and the screen stops being a round recess. */
+.instrument.is-room .dial-wrap {
+  width: 100%;
+  max-width: none;
+  aspect-ratio: auto;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 1 auto;
+  min-height: 0;
+}
+
+.instrument.is-room .dial-mount {
+  display: none;
+}
+
+/* The recessed screen stays — it is the one surface on the site that is dark
+   in both themes, so a glowing amber readout keeps its contrast whichever
+   theme the visitor is in. It just stops being a circle cut out of a dial and
+   becomes a full-width panel. */
+.instrument.is-room .screen {
+  position: static;
+  inset: auto;
+  width: 100%;
+  border-radius: var(--radius);
+  padding-block: clamp(8px, 2.2vh, 30px);
+  padding-inline: clamp(6px, 2vw, 26px);
+}
+
+/* clamp(4rem, 22vw, 20rem) is the target size; the other two terms are fit
+   guards, because 22vw of an eight-character mono readout is wider than the
+   phone it is on. A monospace glyph in this stack advances about 0.61em, so
+   `(100vw - gutters) / (N * 0.66)` is the largest size that cannot overflow
+   sideways with room to spare, and 38vh keeps a five-character readout off
+   the controls in landscape. --room-chars is set per panel below, and
+   --room-gutter tracks the instrument's and the screen's own padding. */
+.instrument.is-room .readout {
+  --room-chars: 8;
+  --room-gutter: clamp(0.75rem, 5vw, 6rem);
+  font-size: min(
+    clamp(4rem, 22vw, 20rem),
+    calc((100vw - var(--room-gutter)) / (var(--room-chars) * 0.66)),
+    38vh
+  );
+  line-height: 0.95;
+}
+
+/* Both of these sit on the dark screen panel, so they take a light ink
+   rather than --fg-dim, which is nearly black under the light theme. */
+.instrument.is-room .readout-sub {
+  font-size: clamp(10px, 1.4vw, 15px);
+  letter-spacing: 0.3em;
+  margin-top: clamp(6px, 1.2vh, 14px);
+  color: rgba(238, 242, 240, 0.62);
+}
+
+.instrument.is-room .readout-phase {
+  font-size: clamp(14px, 3.4vw, 34px);
+  letter-spacing: 0.16em;
+  margin-top: clamp(6px, 1.4vh, 16px);
+  color: rgba(238, 242, 240, 0.92);
+}
+
+.instrument.is-room .controls-row {
+  flex: 0 0 auto;
+  width: 100%;
+}
+
+.instrument.is-room .wake-note {
+  flex: 0 0 auto;
+  margin: 0;
+}
+
+/* Everything that is a setting rather than a readout. In room mode the timer
+   is already configured — the phone is across the room and nobody is editing
+   a number field from there. */
+.instrument.is-room .set-row,
+.instrument.is-room .field-row,
+.instrument.is-room .preset-row,
+.instrument.is-room .notify-row,
+.instrument.is-room .notify-state,
+.instrument.is-room .hint,
+.instrument.is-room .preset-chips {
+  display: none;
+}
+
+/* ---- per-panel layouts ----
+   Four structurally different instruments, four layouts. One rule cannot
+   place a pomodoro's session dots, an interval's work/rest phase line and a
+   stopwatch's lap table at 20rem type. */
+
+/* Countdown: HH:MM:SS, eight characters, nothing else competing for room. */
+body[data-room-panel="countdown"] .instrument.is-room .readout {
+  --room-chars: 8;
+}
+
+/* Stopwatch: eleven characters including hundredths, and the lap table has
+   to survive — a coach reading splits from the side of a track is the case.
+   It becomes a scrolling column pinned under the clock rather than a full
+   table, and the +/- delta stays because that is the number being read. */
+body[data-room-panel="stopwatch"] .instrument.is-room .readout {
+  --room-chars: 11;
+}
+
+body[data-room-panel="stopwatch"] .instrument.is-room .lap-table {
+  flex: 1 1 auto;
+  min-height: 0;
+  /* the desk-scale 260px cap is what cut a row in half at room scale */
+  max-height: none;
+  width: min(100%, 620px);
+  overflow-y: auto;
+  margin: 0;
+  /* laps render newest-first, so the fade at the foot of the scroller says
+     "older splits below" rather than looking like a clipped table */
+  -webkit-mask-image: linear-gradient(180deg, #000 calc(100% - 26px), transparent);
+  mask-image: linear-gradient(180deg, #000 calc(100% - 26px), transparent);
+}
+
+body[data-room-panel="stopwatch"] .instrument.is-room .lap-table table {
+  font-size: clamp(15px, 2.2vw, 24px);
+}
+
+body[data-room-panel="stopwatch"] .instrument.is-room .lap-table-empty {
+  font-size: clamp(13px, 1.8vw, 18px);
+}
+
+/* Pomodoro: five characters, so the readout can take the full 22vw, and the
+   session dots scale up with it — they are the "how far through the cycle am
+   I" signal and shrinking them to 8px defeats the point. */
+body[data-room-panel="pomodoro"] .instrument.is-room .readout {
+  --room-chars: 5;
+}
+
+body[data-room-panel="pomodoro"] .instrument.is-room .pip-row,
+body[data-room-panel="interval"] .instrument.is-room .pip-row {
+  flex: 0 0 auto;
+  gap: clamp(6px, 1.2vw, 16px);
+  flex-wrap: wrap;
+  justify-content: center;
+  max-width: min(100%, 900px);
+  margin: 0;
+}
+
+body[data-room-panel="pomodoro"] .instrument.is-room .pip,
+body[data-room-panel="interval"] .instrument.is-room .pip {
+  width: clamp(10px, 1.6vw, 22px);
+  height: clamp(10px, 1.6vw, 22px);
+}
+
+/* Interval: same five characters, but the phase line is doing more work
+   here — "Work · Round 3/8" is what the room is actually reading between
+   glances at the clock — so it gets promoted to display type. */
+body[data-room-panel="interval"] .instrument.is-room .readout {
+  --room-chars: 5;
+}
+
+body[data-room-panel="interval"] .instrument.is-room .readout-phase {
+  font-size: clamp(18px, 4.6vw, 46px);
+  font-weight: 800;
+  color: var(--accent);
+}
+
+body[data-room-panel="interval"] .instrument.is-room .readout.is-cyan + .readout-phase {
+  color: var(--cyan);
+}
+
+/* ---- the wake-lock affordance ----
+   Only ever shown while a sentinel is genuinely held (app.js drives `hidden`
+   off the sentinel, not off the request), so the screen is never being kept
+   awake silently. */
+
+.wake-note {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 7px;
+  margin: 10px 0 0;
+  font-family: var(--font-display);
+  font-size: 11.5px;
+  font-weight: 700;
+  letter-spacing: 0.08em;
+  text-transform: uppercase;
+  color: var(--cyan);
+}
+
+.wake-note[hidden] {
+  display: none;
+}
+
+.wake-dot {
+  width: 7px;
+  height: 7px;
+  border-radius: 50%;
+  background: var(--cyan);
+  box-shadow: 0 0 8px rgba(var(--cyan-rgb), 0.9);
+  animation: wake-pulse 2.4s ease-in-out infinite;
+}
+
+@keyframes wake-pulse {
+  0%, 100% { opacity: 1; }
+  50% { opacity: 0.35; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .wake-dot {
+    animation: none;
+  }
+  .instrument.is-room {
+    transition: none;
+  }
+}

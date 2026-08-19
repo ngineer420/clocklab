@@ -67,6 +67,264 @@
     return Date.now();
   }
 
+  /* ========================== SCREEN WAKE LOCK ==========================
+   * A timer that a phone puts to sleep halfway through is not a timer.
+   * navigator.wakeLock keeps the display awake, and the whole contract of
+   * this module is that the lock is *given back*: every acquire is keyed by
+   * the instrument that asked for it, and the moment the last instrument
+   * stops running the sentinel is released. A gym phone left lit until the
+   * battery is flat would be a worse defect than the one this fixes.
+   *
+   * Browsers drop a wake lock on their own whenever the page stops being
+   * visible, and the sentinel does not come back by itself — so
+   * visibilitychange re-requests it if somebody still wants it. A request
+   * made while the page is hidden always rejects, hence the visibility
+   * guard rather than a blind retry.
+   *
+   * Everything here no-ops silently where the API is missing (iOS Safari
+   * before 16.4, and any browser with the page in an insecure context).
+   * The visible affordance below is driven off the *sentinel*, not off the
+   * request, so the badge only ever claims the screen is being held awake
+   * when it actually is. */
+
+  var WakeLock = (function () {
+    var api = null;
+    try {
+      api = navigator.wakeLock && typeof navigator.wakeLock.request === "function"
+        ? navigator.wakeLock
+        : null;
+    } catch (e) {
+      api = null;
+    }
+
+    var sentinel = null;
+    var holders = {};
+    var holderCount = 0;
+    var listeners = [];
+
+    function wanted() {
+      return holderCount > 0;
+    }
+
+    function emit() {
+      var active = !!sentinel;
+      listeners.forEach(function (fn) {
+        try {
+          fn(active);
+        } catch (e) {}
+      });
+    }
+
+    function acquire() {
+      if (!api || sentinel || !wanted()) return;
+      if (document.visibilityState !== "visible") return;
+      var pending;
+      try {
+        pending = api.request("screen");
+      } catch (e) {
+        return;
+      }
+      pending.then(
+        function (s) {
+          // Nobody is running any more by the time the promise settled.
+          if (!wanted()) {
+            s.release().catch(function () {});
+            return;
+          }
+          sentinel = s;
+          s.addEventListener("release", function () {
+            if (sentinel === s) sentinel = null;
+            emit();
+          });
+          emit();
+        },
+        function () {
+          sentinel = null;
+          emit();
+        }
+      );
+    }
+
+    function release() {
+      var s = sentinel;
+      sentinel = null;
+      if (s) {
+        try {
+          var p = s.release();
+          if (p && p.catch) p.catch(function () {});
+        } catch (e) {}
+      }
+      emit();
+    }
+
+    document.addEventListener("visibilitychange", function () {
+      if (document.visibilityState === "visible") acquire();
+    });
+
+    return {
+      supported: !!api,
+      /* Idempotent per key, so a start handler firing twice cannot leak a
+         holder that never gets freed. */
+      hold: function (key) {
+        if (holders[key]) return;
+        holders[key] = true;
+        holderCount++;
+        acquire();
+      },
+      free: function (key) {
+        if (!holders[key]) return;
+        delete holders[key];
+        holderCount--;
+        if (holderCount <= 0) {
+          holderCount = 0;
+          release();
+        }
+      },
+      onChange: function (fn) {
+        listeners.push(fn);
+        fn(!!sentinel);
+      },
+    };
+  })();
+
+  /* Every instrument ships one <p data-wake-note> next to its controls. It
+     is hidden until a sentinel is genuinely held, so the power draw is
+     never silent. */
+  function initWakeNotes() {
+    var notes = [].slice.call(document.querySelectorAll("[data-wake-note]"));
+    if (!notes.length) return;
+    WakeLock.onChange(function (active) {
+      notes.forEach(function (note) {
+        note.hidden = !active;
+      });
+    });
+  }
+
+  /* ============================= ROOM MODE =============================
+   * Deliberately a class on <body> rather than a :fullscreen rule.
+   * Element.requestFullscreen() has never worked on iOS Safari for
+   * anything but <video>, and a phone propped against a water bottle at
+   * the side of a gym is the case this exists for — a layout keyed off
+   * :fullscreen would simply never match there. So the layout is driven by
+   * `body.room-mode` plus `data-room-panel`, which needs no API at all,
+   * and requestFullscreen is layered on top as pure enhancement: if it
+   * takes, the browser chrome goes too; if it throws or no-ops, nothing
+   * about the layout changes.
+   *
+   * `.room-ancestor` is painted up the chain from the instrument to <main>
+   * so the CSS can hide every sibling of the thing being shown without a
+   * per-page selector list and without :has().
+   *
+   * Returns a small handle: init functions call `.alert(true)` when their
+   * instrument hits its finish state, which floods the screen with the
+   * alert colour — the point being that a muted room still sees zero. */
+  function roomMode(instrument) {
+    if (!instrument) return null;
+    var btn = instrument.querySelector("[data-room-mode]");
+    if (!btn) return null;
+
+    var kind = btn.getAttribute("data-room-mode") || "timer";
+    var active = false;
+    var wentFullscreen = false;
+    var ancestors = [];
+
+    function fullscreenEl() {
+      return document.fullscreenElement || document.webkitFullscreenElement || null;
+    }
+
+    function requestFullscreen() {
+      var el = document.documentElement;
+      var fn = el.requestFullscreen || el.webkitRequestFullscreen;
+      if (!fn) return;
+      try {
+        var p = fn.call(el);
+        if (p && p.then) {
+          p.then(
+            function () {
+              wentFullscreen = true;
+            },
+            function () {}
+          );
+        } else {
+          wentFullscreen = true;
+        }
+      } catch (e) {}
+    }
+
+    function dropFullscreen() {
+      if (!wentFullscreen) return;
+      wentFullscreen = false;
+      var fn = document.exitFullscreen || document.webkitExitFullscreen;
+      if (!fn || !fullscreenEl()) return;
+      try {
+        var p = fn.call(document);
+        if (p && p.catch) p.catch(function () {});
+      } catch (e) {}
+    }
+
+    function enter() {
+      if (active) return;
+      active = true;
+      ancestors = [];
+      var node = instrument.parentElement;
+      while (node && node !== document.body) {
+        node.classList.add("room-ancestor");
+        ancestors.push(node);
+        node = node.parentElement;
+      }
+      instrument.classList.add("is-room");
+      document.body.classList.add("room-mode");
+      document.body.setAttribute("data-room-panel", kind);
+      btn.setAttribute("aria-pressed", "true");
+      btn.textContent = "Exit room mode";
+      requestFullscreen();
+    }
+
+    function exit() {
+      if (!active) return;
+      active = false;
+      ancestors.forEach(function (node) {
+        node.classList.remove("room-ancestor");
+      });
+      ancestors = [];
+      instrument.classList.remove("is-room");
+      document.body.classList.remove("room-mode");
+      document.body.removeAttribute("data-room-panel");
+      btn.setAttribute("aria-pressed", "false");
+      btn.textContent = "Room mode";
+      dropFullscreen();
+      btn.focus();
+    }
+
+    btn.addEventListener("click", function () {
+      if (active) exit();
+      else enter();
+    });
+
+    document.addEventListener("keydown", function (e) {
+      if (e.key === "Escape" && active) exit();
+    });
+
+    // Leaving fullscreen by the browser's own affordance (F11, the Esc
+    // overlay) should leave room mode with it, or the visitor is stuck in
+    // a chrome-less page with no obvious way out.
+    ["fullscreenchange", "webkitfullscreenchange"].forEach(function (evt) {
+      document.addEventListener(evt, function () {
+        if (!fullscreenEl() && wentFullscreen && active) {
+          wentFullscreen = false;
+          exit();
+        }
+      });
+    });
+
+    return {
+      alert: function (on) {
+        instrument.classList.toggle("is-room-alert", !!on);
+      },
+      exit: exit,
+    };
+  }
+
   /* ========================== NOTIFICATIONS ==========================
    * One shared "alert me" preference across every timer — it is the same
    * question ("may I interrupt you?"), so answering it once on the
@@ -252,8 +510,10 @@
     var sInput = document.getElementById("cd-s");
     var dialMount = document.getElementById("cd-dial");
     var dial = Dial ? Dial.mount(dialMount, "arc") : null;
+    var room = roomMode(startBtn.closest(".instrument"));
 
     var STORE_KEY = "countdown";
+    var WAKE_KEY = "countdown";
 
     var totalMs = 0;
     var accumulatedMs = 0;
@@ -330,6 +590,10 @@
       resetBtn.hidden = true;
       stopAlarmBtn.hidden = false;
       stopAlarmBtn.textContent = live ? "Stop Alarm" : "Dismiss";
+      // Zero is reached: the screen no longer has to be held awake, and
+      // the room-mode layout floods with the alert colour instead.
+      WakeLock.free(WAKE_KEY);
+      if (room) room.alert(true);
       render();
       persist();
       if (live) {
@@ -344,6 +608,8 @@
       startBtn.disabled = true;
       pauseBtn.disabled = false;
       setInputsDisabled(true);
+      WakeLock.hold(WAKE_KEY);
+      if (room) room.alert(false);
     }
 
     function setPausedUi() {
@@ -352,10 +618,13 @@
       startBtn.disabled = false;
       pauseBtn.disabled = true;
       setInputsDisabled(true);
+      WakeLock.free(WAKE_KEY);
     }
 
     function clearToIdle() {
       ringing = false;
+      WakeLock.free(WAKE_KEY);
+      if (room) room.alert(false);
       if (alarmHandle) alarmHandle.stop();
       alarmHandle = null;
       accumulatedMs = 0;
@@ -553,6 +822,8 @@
     var statusEl = document.getElementById("sw-status");
     var lapsBody = document.getElementById("sw-laps");
     var lapsEmpty = document.getElementById("sw-laps-empty");
+    var room = roomMode(startBtn.closest(".instrument"));
+    var WAKE_KEY = "stopwatch";
     var dialMount = document.getElementById("sw-dial");
     var dial = Dial ? Dial.mount(dialMount, "sweep") : null;
 
@@ -620,6 +891,10 @@
     }
 
     function setState(state) {
+      // One funnel for every transition, so the wake lock can never be
+      // held by a stopwatch that is not moving.
+      if (state === "running") WakeLock.hold(WAKE_KEY);
+      else WakeLock.free(WAKE_KEY);
       if (state === "idle") {
         statusEl.textContent = "Idle";
         statusEl.setAttribute("data-state", "idle");
@@ -721,8 +996,10 @@
     var sessionsInput = document.getElementById("pd-sessions");
     var dialMount = document.getElementById("pd-dial");
     var dial = Dial ? Dial.mount(dialMount, "arc") : null;
+    var room = roomMode(startBtn.closest(".instrument"));
 
     var STORE_KEY = "pomodoro";
+    var WAKE_KEY = "pomodoro";
 
     var phase = "work"; // work | break | longbreak
     var sessionIndex = 0; // completed work sessions in current cycle
@@ -863,6 +1140,7 @@
       startBtn.disabled = true;
       pauseBtn.disabled = false;
       setInputsDisabled(true);
+      WakeLock.hold(WAKE_KEY);
       persist();
       ticker.start();
     });
@@ -876,6 +1154,7 @@
       startBtn.disabled = false;
       pauseBtn.disabled = true;
       ticker.stop();
+      WakeLock.free(WAKE_KEY);
       persist();
       render();
     });
@@ -890,6 +1169,7 @@
     resetBtn.addEventListener("click", function () {
       running = false;
       ticker.stop();
+      WakeLock.free(WAKE_KEY);
       phase = "work";
       sessionIndex = 0;
       accumulatedMs = 0;
@@ -936,6 +1216,7 @@
         startBtn.disabled = true;
         pauseBtn.disabled = false;
         setInputsDisabled(true);
+        WakeLock.hold(WAKE_KEY);
         renderPips();
         // Replays every phase boundary crossed while we were away, then
         // renders the phase the clock says we are actually in.
@@ -1168,8 +1449,10 @@
     var roundsInput = document.getElementById("iv-rounds");
     var dialMount = document.getElementById("iv-dial");
     var dial = Dial ? Dial.mount(dialMount, "arc") : null;
+    var room = roomMode(startBtn.closest(".instrument"));
 
     var STORE_KEY = "interval";
+    var WAKE_KEY = "interval";
     var PREP_MS = 5000;
     var phase = "work"; // prep | work | rest | done
     var round = 1;
@@ -1309,6 +1592,8 @@
         pauseBtn.disabled = true;
         setInputsDisabled(false);
         ticker.stop();
+        WakeLock.free(WAKE_KEY);
+        if (room) room.alert(true);
       }
     }
 
@@ -1340,6 +1625,8 @@
       startBtn.disabled = true;
       pauseBtn.disabled = false;
       setInputsDisabled(true);
+      WakeLock.hold(WAKE_KEY);
+      if (room) room.alert(false);
       renderPips();
       persist();
       ticker.start();
@@ -1354,6 +1641,7 @@
       startBtn.disabled = false;
       pauseBtn.disabled = true;
       ticker.stop();
+      WakeLock.free(WAKE_KEY);
       persist();
       render();
     });
@@ -1361,6 +1649,8 @@
     resetBtn.addEventListener("click", function () {
       running = false;
       ticker.stop();
+      WakeLock.free(WAKE_KEY);
+      if (room) room.alert(false);
       phase = "work";
       round = 1;
       everStarted = false;
@@ -1409,6 +1699,7 @@
         startBtn.disabled = true;
         pauseBtn.disabled = false;
         setInputsDisabled(true);
+        WakeLock.hold(WAKE_KEY);
         renderPips();
         tick();
         if (running) ticker.start();
@@ -1620,6 +1911,7 @@
   document.addEventListener("DOMContentLoaded", function () {
     initTheme();
     initNotifyToggles();
+    initWakeNotes();
     initPanelSwitching();
     initCountdown();
     initStopwatch();

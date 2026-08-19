@@ -90,7 +90,9 @@
         <button type="button" class="ctrl-btn" id="cd-pause" disabled>Pause</button>
         <button type="button" class="ctrl-btn ghost" id="cd-reset">Reset</button>
         <button type="button" class="ctrl-btn stop" id="cd-stop-alarm" hidden>Stop Alarm</button>
+        <button type="button" class="ctrl-btn ghost room-btn" data-room-mode="countdown" aria-pressed="false">Room mode</button>
       </div>
+      <p class="wake-note" data-wake-note role="status" hidden><span class="wake-dot" aria-hidden="true"></span>Screen kept awake while this runs</p>
       <div class="notify-row">
         <input type="checkbox" id="cd-notify" data-notify-toggle>
         <label for="cd-notify">Notify me when it's done</label>
