@@ -496,6 +496,157 @@
     show(null, false, true);
   }
 
+  /* ============================ SETUP IN THE URL ============================ */
+  /* A timer setup travels as query parameters, so one link reproduces it:
+       /countdown-timer/?t=25m&start=1
+       /interval-timer/?work=20s&rest=10s&rounds=8
+       /pomodoro-timer/?focus=25m&short=5m&long=15m
+     Each page writes its current setup back with replaceState on every
+     change, so the address bar is always a link that reproduces the setup.
+     The homepage owns its own URL (panel switching), so it never writes one. */
+
+  var onHomepage = !!document.getElementById("overview-panel");
+
+  function urlParams() {
+    try {
+      return new URLSearchParams(location.search);
+    } catch (e) {
+      return null;
+    }
+  }
+
+  // "1h30m" -> 5400, "25m" -> 1500, "90s" -> 90. A bare number counts in
+  // `unitSeconds`: seconds on the countdown and interval pages, minutes on
+  // the pomodoro page, because that is the unit of the field it fills.
+  function parseDuration(raw, unitSeconds) {
+    if (raw === null || raw === undefined) return NaN;
+    var s = String(raw).toLowerCase().replace(/\s+/g, "");
+    if (!s) return NaN;
+    if (/^\d+(\.\d+)?$/.test(s)) return Math.round(Number(s) * unitSeconds);
+    var total = 0;
+    var matched = false;
+    var rest = s.replace(/(\d+(?:\.\d+)?)(h|m|s)/g, function (_, n, unit) {
+      matched = true;
+      total += Number(n) * (unit === "h" ? 3600 : unit === "m" ? 60 : 1);
+      return "";
+    });
+    if (!matched || rest) return NaN;
+    return Math.round(total);
+  }
+
+  // 5400 -> "1h30m", 1500 -> "25m", 90 -> "1m30s", 45 -> "45s".
+  function fmtDuration(seconds) {
+    var total = Math.max(0, Math.round(seconds));
+    var h = Math.floor(total / 3600);
+    var m = Math.floor((total % 3600) / 60);
+    var s = total % 60;
+    var out = "";
+    if (h) out += h + "h";
+    if (m) out += m + "m";
+    if (s || !out) out += s + "s";
+    return out;
+  }
+
+  // 1500 -> "25:00", 5400 -> "1:30:00". The tab title, not the readout.
+  function fmtClock(seconds) {
+    var total = Math.max(0, Math.round(seconds));
+    var h = Math.floor(total / 3600);
+    var m = Math.floor((total % 3600) / 60);
+    var s = total % 60;
+    return (h ? h + ":" + pad2(m) : String(m)) + ":" + pad2(s);
+  }
+
+  function buildShareUrl(path, setup) {
+    var qs = new URLSearchParams();
+    Object.keys(setup).forEach(function (k) {
+      qs.set(k, setup[k]);
+    });
+    return location.origin + path + "?" + qs.toString();
+  }
+
+  // Rewrites the address bar in place. `start` is dropped: a link that was
+  // opened with start=1 must not start again on a plain reload after the
+  // visitor changed the setup.
+  function writeSetupUrl(setup) {
+    if (onHomepage || !window.history || !history.replaceState) return;
+    try {
+      var qs = new URLSearchParams(location.search);
+      Object.keys(setup).forEach(function (k) {
+        qs.set(k, setup[k]);
+      });
+      qs.delete("start");
+      qs.delete("autostart");
+      history.replaceState(history.state, "", location.pathname + "?" + qs.toString() + location.hash);
+    } catch (e) {}
+  }
+
+  function wantsStart() {
+    return /(^|[?&])(start|autostart)=1(&|$)/.test(location.search);
+  }
+
+  // Audio cannot be unlocked without a gesture, and following a link is not
+  // one. So the timer starts, and the first interaction of any kind
+  // afterwards unlocks sound in time for the alarm.
+  function startFromLink(startBtn) {
+    var unlockOnce = function () {
+      if (Audio) Audio.unlock();
+      document.removeEventListener("pointerdown", unlockOnce, true);
+      document.removeEventListener("keydown", unlockOnce, true);
+    };
+    document.addEventListener("pointerdown", unlockOnce, true);
+    document.addEventListener("keydown", unlockOnce, true);
+    startBtn.click();
+  }
+
+  function copyText(text) {
+    if (navigator.clipboard && navigator.clipboard.writeText) {
+      return navigator.clipboard.writeText(text);
+    }
+    return new Promise(function (resolve, reject) {
+      var ta = document.createElement("textarea");
+      ta.value = text;
+      ta.setAttribute("readonly", "");
+      ta.style.position = "fixed";
+      ta.style.opacity = "0";
+      document.body.appendChild(ta);
+      ta.select();
+      var ok = false;
+      try {
+        ok = document.execCommand("copy");
+      } catch (e) {}
+      document.body.removeChild(ta);
+      if (ok) resolve();
+      else reject(new Error("copy failed"));
+    });
+  }
+
+  // "Copy link" buttons. `buildUrl` runs at click time, so the link always
+  // carries the setup on screen at that moment.
+  function initCopyLink(btn, buildUrl) {
+    if (!btn) return;
+    var label = btn.textContent;
+    var timer = null;
+    function flash(text) {
+      btn.textContent = text;
+      window.clearTimeout(timer);
+      timer = window.setTimeout(function () {
+        btn.textContent = label;
+      }, 1600);
+    }
+    btn.addEventListener("click", function () {
+      var url = buildUrl();
+      copyText(url).then(
+        function () {
+          flash("Copied");
+        },
+        function () {
+          flash("Copy failed");
+          window.prompt("Copy this link", url);
+        }
+      );
+    });
+  }
+
   /* ============================ COUNTDOWN TIMER (cd-) ============================ */
   function initCountdown() {
     var startBtn = document.getElementById("cd-start");
@@ -683,6 +834,7 @@
         accumulatedMs = 0;
         persist();
         render();
+        syncUrl();
       });
     });
 
@@ -737,6 +889,29 @@
     var workspace = startBtn.closest(".instrument");
     var presetSeconds = workspace ? Math.max(0, Number(workspace.dataset.duration) || 0) : 0;
 
+    /* ---- shared links: /countdown-timer/?t=25m&start=1 ---- */
+    /* A duration in the URL is a preset that arrived by link. It takes the
+       same path as a preset page: it is dialled in unless the saved countdown
+       is this very setup mid-flight, and start=1 runs it without a tap. */
+    var params = urlParams();
+    var sharedSeconds = params ? parseDuration(params.get("t"), 1) : NaN;
+    var sharedVisit = sharedSeconds > 0;
+    if (sharedVisit) presetSeconds = Math.min(sharedSeconds, 23 * 3600 + 59 * 60 + 59);
+
+    function currentSeconds() {
+      return Math.round(readInputsMs() / 1000);
+    }
+
+    function syncUrl() {
+      var secs = currentSeconds();
+      writeSetupUrl({ t: fmtDuration(secs) });
+      if (sharedVisit) document.title = fmtClock(secs) + " countdown \u2014 clocklab.net";
+    }
+
+    initCopyLink(document.getElementById("cd-copy-link"), function () {
+      return buildShareUrl("/countdown-timer/", { t: fmtDuration(currentSeconds()) });
+    });
+
     function applyDuration(seconds) {
       var total = Math.max(0, Math.min(23 * 3600 + 59 * 60 + 59, Math.floor(seconds)));
       hInput.value = Math.floor(total / 3600);
@@ -757,6 +932,7 @@
           clearToIdle();
           applyDuration(Number(btn.dataset.presetSeconds));
           render();
+          syncUrl();
           Array.prototype.forEach.call(presetBtns, function (other) {
             other.classList.toggle("is-active", other === btn);
             other.setAttribute("aria-pressed", String(other === btn));
@@ -792,24 +968,13 @@
       pauseBtn.disabled = true;
       render();
 
-      if (/(^|[?&])autostart=1(&|$)/.test(location.search)) {
-        // Audio cannot be unlocked without a gesture, and following a link is
-        // not one — so the countdown starts, and the first interaction of any
-        // kind afterwards unlocks sound in time for the alarm.
-        var unlockOnce = function () {
-          if (Audio) Audio.unlock();
-          document.removeEventListener("pointerdown", unlockOnce, true);
-          document.removeEventListener("keydown", unlockOnce, true);
-        };
-        document.addEventListener("pointerdown", unlockOnce, true);
-        document.addEventListener("keydown", unlockOnce, true);
-        startBtn.click();
-      }
+      if (wantsStart()) startFromLink(startBtn);
     } else if (!restore()) {
       totalMs = readInputsMs();
       pauseBtn.disabled = true;
       render();
     }
+    if (sharedVisit) document.title = fmtClock(currentSeconds()) + " countdown \u2014 clocklab.net";
   }
 
   /* ============================ STOPWATCH (sw-) ============================ */
@@ -1191,6 +1356,7 @@
         renderPips();
         render();
         persist();
+        syncUrl();
       });
     });
 
@@ -1234,11 +1400,66 @@
       return true;
     }
 
+    /* ---- shared links: /pomodoro-timer/?focus=25m&short=5m&long=15m ---- */
+    var params = urlParams();
+    var shared = params && (params.has("focus") || params.has("short") || params.has("long") || params.has("sessions"))
+      ? {
+          focus: parseDuration(params.get("focus"), 60),
+          brk: parseDuration(params.get("short"), 60),
+          longBrk: parseDuration(params.get("long"), 60),
+          sessions: Math.round(Number(params.get("sessions"))),
+        }
+      : null;
+
+    function minutes(seconds, max) {
+      return Math.max(1, Math.min(max, Math.round(seconds / 60)));
+    }
+
+    function setupForUrl() {
+      var c = cfg();
+      return { focus: fmtDuration(c.work * 60), short: fmtDuration(c.brk * 60), long: fmtDuration(c.longBrk * 60), sessions: c.sessions };
+    }
+
+    function syncUrl() {
+      writeSetupUrl(setupForUrl());
+      if (shared) {
+        var c = cfg();
+        document.title = c.work + "/" + c.brk + " pomodoro \u2014 clocklab.net";
+      }
+    }
+
+    initCopyLink(document.getElementById("pd-copy-link"), function () {
+      return buildShareUrl("/pomodoro-timer/", setupForUrl());
+    });
+
+    if (shared) {
+      if (shared.focus > 0) workInput.value = minutes(shared.focus, 90);
+      if (shared.brk > 0) breakInput.value = minutes(shared.brk, 60);
+      if (shared.longBrk > 0) longBreakInput.value = minutes(shared.longBrk, 60);
+      if (shared.sessions > 0) sessionsInput.value = Math.min(12, shared.sessions);
+      // A saved cycle with this exact setup is a reload mid-session, and it
+      // resumes. Any other saved cycle loses to the link.
+      var saved = Store ? Store.load(STORE_KEY) : null;
+      var sameSetup = !!(
+        saved && Number(saved.totalMs) &&
+        String(saved.work) === String(workInput.value) &&
+        String(saved.brk) === String(breakInput.value) &&
+        String(saved.longBrk) === String(longBreakInput.value) &&
+        String(saved.sessions) === String(sessionsInput.value)
+      );
+      if (!sameSetup && Store) Store.clear(STORE_KEY);
+    }
+
     if (!restore()) {
       totalMs = phaseDurationMs("work");
       pauseBtn.disabled = true;
       renderPips();
       render();
+      if (shared && wantsStart()) startFromLink(startBtn);
+    }
+    if (shared) {
+      var sc = cfg();
+      document.title = sc.work + "/" + sc.brk + " pomodoro \u2014 clocklab.net";
     }
   }
 
@@ -1674,6 +1895,7 @@
         renderPips();
         render();
         persist();
+        syncUrl();
       });
     });
 
@@ -1721,11 +1943,59 @@
       return true;
     }
 
+    /* ---- shared links: /interval-timer/?work=20s&rest=10s&rounds=8 ---- */
+    var params = urlParams();
+    var shared = params && (params.has("work") || params.has("rest") || params.has("rounds"))
+      ? {
+          work: parseDuration(params.get("work"), 1),
+          rest: parseDuration(params.get("rest"), 1),
+          rounds: Math.round(Number(params.get("rounds"))),
+        }
+      : null;
+
+    function setupForUrl() {
+      var c = cfg();
+      return { work: fmtDuration(c.work), rest: fmtDuration(c.rest), rounds: c.rounds };
+    }
+
+    function syncUrl() {
+      writeSetupUrl(setupForUrl());
+      if (shared) {
+        var c = cfg();
+        document.title = c.rounds + " \u00d7 " + fmtDuration(c.work) + " interval \u2014 clocklab.net";
+      }
+    }
+
+    initCopyLink(document.getElementById("iv-copy-link"), function () {
+      return buildShareUrl("/interval-timer/", setupForUrl());
+    });
+
+    if (shared) {
+      if (shared.work > 0) workInput.value = Math.min(600, shared.work);
+      if (shared.rest > 0) restInput.value = Math.min(600, shared.rest);
+      if (shared.rounds > 0) roundsInput.value = Math.min(50, shared.rounds);
+      // A saved session with this exact setup is a reload mid-workout, and it
+      // resumes. Any other saved session loses to the link.
+      var saved = Store ? Store.load(STORE_KEY) : null;
+      var sameSetup = !!(
+        saved && saved.everStarted &&
+        String(saved.work) === String(workInput.value) &&
+        String(saved.rest) === String(restInput.value) &&
+        String(saved.rounds) === String(roundsInput.value)
+      );
+      if (!sameSetup && Store) Store.clear(STORE_KEY);
+    }
+
     if (!restore()) {
       totalMs = phaseDurationMs("work");
       pauseBtn.disabled = true;
       renderPips();
       render();
+      if (shared && wantsStart()) startFromLink(startBtn);
+    }
+    if (shared) {
+      var sc = cfg();
+      document.title = sc.rounds + " \u00d7 " + fmtDuration(sc.work) + " interval \u2014 clocklab.net";
     }
   }
 

@@ -18,7 +18,10 @@
  *   6. an egg preset sets and starts in a single tap;
  *   7. every page shares one storage key, so a countdown started elsewhere
  *      must not hijack a preset page, while reloading the page that started
- *      it must resume exactly where it was.
+ *      it must resume exactly where it was;
+ *   8. a setup in the URL (?t=25m, ?work=&rest=&rounds=, ?focus=&short=&long=)
+ *      fills the fields, ?start=1 runs it, and "Copy link" writes a URL that
+ *      reproduces the setup.
  */
 import { spawn } from "node:child_process"
 import { existsSync } from "node:fs"
@@ -207,6 +210,74 @@ check("reloading mid-countdown resumes where it was",
   state.status === "running" && state.readout.startsWith("00:01:5") && state.readout !== "00:01:59",
   JSON.stringify(state))
 await evaluate(`document.getElementById("cd-reset").click()`)
+
+// ---- 9. the setup travels in the URL ------------------------------------
+await goto(BASE + "/countdown-timer/?t=25m")
+state = await evaluate(`(${() => ({
+  h: document.getElementById("cd-h").value,
+  m: document.getElementById("cd-m").value,
+  s: document.getElementById("cd-s").value,
+  readout: document.getElementById("cd-readout").textContent,
+  title: document.title,
+})})()`)
+check("?t=25m dials in 25:00", state.readout === "00:25:00" && state.m === "25" && state.h === "0",
+  JSON.stringify(state))
+check("a shared duration shows in the title", state.title.startsWith("25:00 countdown"), state.title)
+
+await goto(BASE + "/countdown-timer/?t=1h30m&start=1")
+await sleep(1500)
+state = await evaluate(`(${() => ({
+  h: document.getElementById("cd-h").value,
+  m: document.getElementById("cd-m").value,
+  status: document.getElementById("cd-status").getAttribute("data-state"),
+})})()`)
+check("?t=1h30m&start=1 runs at once", state.status === "running" && state.h === "1" && state.m === "30",
+  JSON.stringify(state))
+await evaluate(`document.getElementById("cd-reset").click()`)
+
+await goto(BASE + "/countdown-timer/?t=90")
+state = await evaluate(`document.getElementById("cd-readout").textContent`)
+check("?t=90 reads plain seconds", state === "00:01:30", state)
+
+// editing a field rewrites the address bar, and Copy link copies the same thing
+await evaluate(`
+  navigator.clipboard.writeText = t => { window.__copied = t; return Promise.resolve() };
+  document.getElementById("cd-m").value = "12";
+  document.getElementById("cd-m").dispatchEvent(new Event("input"));
+  document.getElementById("cd-copy-link").click();
+`)
+await sleep(200)
+state = await evaluate(`(${() => ({
+  search: location.search,
+  copied: window.__copied,
+  label: document.getElementById("cd-copy-link").textContent,
+})})()`)
+check("editing the setup rewrites the URL", state.search === "?t=12m30s", state.search)
+check("Copy link writes a URL that reproduces the setup",
+  state.copied === BASE + "/countdown-timer/?t=12m30s",
+  state.copied)
+check("Copy link confirms itself", state.label === "Copied", state.label)
+
+await goto(BASE + "/interval-timer/?work=30s&rest=15s&rounds=6")
+state = await evaluate(`(${() => ({
+  work: document.getElementById("iv-work").value,
+  rest: document.getElementById("iv-rest").value,
+  rounds: document.getElementById("iv-rounds").value,
+  readout: document.getElementById("iv-readout").textContent,
+  pips: document.getElementById("iv-pips").children.length,
+})})()`)
+check("interval setup from the URL", state.work === "30" && state.rest === "15" && state.rounds === "6" && state.readout === "00:30" && state.pips === 6,
+  JSON.stringify(state))
+
+await goto(BASE + "/pomodoro-timer/?focus=50m&short=10m&long=20m")
+state = await evaluate(`(${() => ({
+  work: document.getElementById("pd-work").value,
+  brk: document.getElementById("pd-break").value,
+  longBrk: document.getElementById("pd-long-break").value,
+  readout: document.getElementById("pd-readout").textContent,
+})})()`)
+check("pomodoro setup from the URL", state.work === "50" && state.brk === "10" && state.longBrk === "20" && state.readout === "50:00",
+  JSON.stringify(state))
 
 console.log("\n" + (failures ? failures + " failure(s)" : "all checks passed"))
 ws.close()
