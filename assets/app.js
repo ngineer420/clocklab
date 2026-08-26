@@ -2247,3 +2247,14 @@
     });
   }
 })();
+
+/* ================================================================== *
+ * Offline. build.py writes /sw.js with a precache of every page and every
+ * same-origin script and stylesheet. Registration waits for the load event
+ * so that the worker install never competes with the page for bandwidth.
+ * ================================================================== */
+if ("serviceWorker" in navigator) {
+  window.addEventListener("load", function () {
+    navigator.serviceWorker.register("/sw.js");
+  });
+}

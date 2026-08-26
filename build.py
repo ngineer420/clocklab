@@ -15,12 +15,24 @@ with the correct "text/html" content type. So every tool/legal page ships
 as BOTH "<slug>/index.html" (the true clean path, trailing slash) and
 "<slug>.html" (a flat, real .html alias, also correctly text/html).
 """
+import hashlib
 import os
 import json
+import re
+import sys
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 SITE = "https://clocklab.net"
 TODAY = "2026-08-10"
+
+# `python3 build.py --check` writes nothing. It compares every generated file
+# with the file on disk and exits 1 when one of them is stale. Run it before a
+# deploy so that sw.js and its cache name always match the shipped pages.
+CHECK = "--check" in sys.argv[1:]
+# Every generated file, keyed by its repo-relative path, in output order.
+# The service worker generator at the bottom reads the page HTML from here.
+OUTPUT = {}
+STALE = []
 
 # ---------------------------------------------------------------- tools --
 
@@ -445,6 +457,9 @@ ADSENSE = '<script async src="https://pagead2.googlesyndication.com/pagead/js/ad
 # Written from here rather than kept by hand in assets/ so the mark and the
 # <link> in head() below can never drift apart.
 FAVICON_PATH = "assets/favicon.svg"
+# The dark --panel colour. The <meta name="theme-color"> in head() and the
+# web manifest both read it from here.
+THEME_COLOR = "#15181c"
 FAVICON_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
   <rect width="64" height="64" rx="14" fill="#15181c"/>
   <circle cx="32" cy="32" r="22" fill="#ffab2e"/>
@@ -638,7 +653,8 @@ def head(title, description, canonical_path, json_ld):
   <meta name="description" content="{description}">
   <link rel="canonical" href="{canonical}">
   <link rel="icon" href="/{favicon}" type="image/svg+xml">
-  <meta name="theme-color" content="#15181c">
+  <link rel="manifest" href="/manifest.webmanifest">
+  <meta name="theme-color" content="{theme_color}">
   <meta property="og:type" content="website">
   <meta property="og:site_name" content="clocklab.net">
   <meta property="og:title" content="{title}">
@@ -653,6 +669,7 @@ def head(title, description, canonical_path, json_ld):
 </head>""".format(
         no_flash=NO_FLASH,
         favicon=FAVICON_PATH,
+        theme_color=THEME_COLOR,
         title=title,
         description=description,
         canonical=canonical,
@@ -671,7 +688,17 @@ def scripts_tail():
 
 
 def write(path, content):
+    OUTPUT[path] = content
     full = os.path.join(ROOT, path)
+    if CHECK:
+        try:
+            with open(full, "r", encoding="utf-8") as f:
+                current = f.read()
+        except OSError:
+            current = None
+        if current != content:
+            STALE.append(path)
+        return
     d = os.path.dirname(full)
     if d:
         os.makedirs(d, exist_ok=True)
@@ -1664,9 +1691,200 @@ sitemap = (
 )
 write("sitemap.xml", sitemap)
 
+# ------------------------------------------------------ web manifest --
+
+MANIFEST = {
+    "name": "clocklab.net",
+    "short_name": "clocklab",
+    "start_url": "/",
+    "scope": "/",
+    "display": "standalone",
+    "background_color": THEME_COLOR,
+    "theme_color": THEME_COLOR,
+    "icons": [
+        {"src": "/" + FAVICON_PATH, "type": "image/svg+xml", "sizes": "any"},
+        {"src": "/icon-512.png", "type": "image/png", "sizes": "512x512"},
+    ],
+}
+write("manifest.webmanifest", json.dumps(MANIFEST, indent=2) + "\n")
+
+# ---------------------------------------------------- service worker --
+# sw.js makes the "works offline" claim true. Its precache list is the
+# sitemap URL list plus every same-origin CSS and JS file that those pages
+# load, and the cache name carries a hash of all of that content. A deploy
+# that changes one byte of one precached file therefore gets a new cache
+# name, and the activate handler drops the old cache. Nothing here is
+# hand-typed: change a page or an asset, run `python3 build.py`, commit.
+
+SW_PREFIX = "clocklab-"
+
+# Same-origin URL paths only. A protocol-relative or absolute URL, such as
+# the AdSense script, never enters the precache.
+STYLESHEET_RE = re.compile(r'<link[^>]+rel="stylesheet"[^>]+href="([^"]+)"')
+SCRIPT_RE = re.compile(r'<script[^>]+src="([^"]+)"')
+WORKER_RE = re.compile(r'new (?:global\.|self\.|window\.)?Worker\("([^"]+)"\)')
+
+
+def same_origin_path(href):
+    if href.startswith(SITE + "/"):
+        return href[len(SITE):]
+    if href.startswith("/") and not href.startswith("//"):
+        return href
+    return None
+
+
+def page_file(url_path):
+    """The file the server sends for a sitemap URL: "/" -> index.html,
+    "/countdown-timer/" -> countdown-timer/index.html."""
+    if url_path == "/":
+        return "index.html"
+    return url_path.strip("/") + "/index.html"
+
+
+def precached_content(path):
+    """The bytes the deployed site serves for a repo-relative file path.
+    Generated files come from OUTPUT, so --check needs no write. Files that
+    build.py does not write, such as the assets, come from disk."""
+    path = path.lstrip("/")
+    if path in OUTPUT:
+        return OUTPUT[path].encode("utf-8")
+    with open(os.path.join(ROOT, path), "rb") as f:
+        return f.read()
+
+
+def precache_entries(page_urls):
+    """The request URLs the worker caches at install time, in one stable
+    order: every page, then every same-origin stylesheet and script those
+    pages reference (the query string kept as written), then every worker
+    script those scripts start with `new Worker(...)`."""
+    assets = []
+    for url_path in page_urls:
+        html = OUTPUT[page_file(url_path)]
+        for href in STYLESHEET_RE.findall(html) + SCRIPT_RE.findall(html):
+            path = same_origin_path(href)
+            if path and path not in assets:
+                assets.append(path)
+    for asset in list(assets):
+        if asset.split("?")[0].endswith(".js"):
+            source = precached_content(asset.split("?")[0]).decode("utf-8")
+            for href in WORKER_RE.findall(source):
+                path = same_origin_path(href)
+                if path and path not in assets:
+                    assets.append(path)
+    return list(page_urls) + assets
+
+
+def precache_version(entries):
+    """First 12 hex characters of a SHA-256 over every precached file, in
+    list order, each prefixed with its request URL."""
+    digest = hashlib.sha256()
+    for entry in entries:
+        digest.update(entry.encode("utf-8") + b"\0")
+        if entry.endswith("/"):
+            digest.update(precached_content(page_file(entry)))
+        else:
+            digest.update(precached_content(entry.split("?")[0].lstrip("/")))
+        digest.update(b"\0")
+    return digest.hexdigest()[:12]
+
+
+SW_TEMPLATE = """/* Service worker for clocklab.net. build.py writes this file. Do not edit
+ * it by hand. Run `python3 build.py` after any change to a page or an asset
+ * and commit the result together with that change.
+ *
+ * VERSION is a hash of every file in PRECACHE. A new deploy therefore gets a
+ * new cache name, and the activate handler deletes every older
+ * "{prefix}*" cache. */
+const VERSION = "{version}";
+const CACHE = "{prefix}" + VERSION;
+const PRECACHE = [
+{entries}
+];
+
+self.addEventListener("install", (event) => {{
+  event.waitUntil(
+    caches
+      .open(CACHE)
+      // {{cache: "reload"}} bypasses the HTTP cache, so a stale copy of a page
+      // in the browser cache can never become the offline copy.
+      .then((cache) =>
+        cache.addAll(PRECACHE.map((url) => new Request(url, {{ cache: "reload" }})))
+      )
+      .then(() => self.skipWaiting())
+  );
+}});
+
+self.addEventListener("activate", (event) => {{
+  event.waitUntil(
+    caches
+      .keys()
+      .then((keys) =>
+        Promise.all(
+          keys
+            .filter((key) => key.startsWith("{prefix}") && key !== CACHE)
+            .map((key) => caches.delete(key))
+        )
+      )
+      .then(() => self.clients.claim())
+  );
+}});
+
+self.addEventListener("fetch", (event) => {{
+  const request = event.request;
+  // Handle same-origin GET requests only. The worker returns here, without
+  // respondWith, for every other request. The AdSense script and every
+  // other third-party request therefore go straight to the network, and the
+  // worker never intercepts them and never caches them.
+  if (request.method !== "GET") return;
+  const url = new URL(request.url);
+  if (url.origin !== self.location.origin) return;
+
+  // Cache first. A navigation with a query string, such as "/?t=25m", falls
+  // back to the cached page at the same path, then to the directory index.
+  // A miss goes to the network. The worker never writes a network response
+  // into the cache: the precache is the whole offline set.
+  event.respondWith(
+    caches.match(request, {{ ignoreSearch: false }}).then((hit) => {{
+      if (hit) return hit;
+      if (request.mode !== "navigate") return fetch(request);
+      return caches.match(url.pathname).then((page) => {{
+        if (page) return page;
+        if (!url.pathname.endsWith("/")) return fetch(request);
+        return caches
+          .match(url.pathname + "index.html")
+          .then((index) => index || fetch(request));
+      }});
+    }})
+  );
+}});
+"""
+
+
+def service_worker(page_urls):
+    entries = precache_entries(page_urls)
+    return SW_TEMPLATE.format(
+        prefix=SW_PREFIX,
+        version=precache_version(entries),
+        entries="\n".join("  {},".format(jstr(e)) for e in entries),
+    )
+
+
+write("sw.js", service_worker(sitemap_urls))
+
+# ------------------------------------------------------------- verdict --
+
+if CHECK:
+    if STALE:
+        print("Stale generated files (run `python3 build.py`):")
+        for path in STALE:
+            print("  " + path)
+        sys.exit(1)
+    print("All {} generated files are current.".format(len(OUTPUT)))
+    sys.exit(0)
+
 print(
     "Generated {} tool pages + {} preset timer pages + the /timers/ hub "
-    "(each dir + .html alias) + homepage + legal + meta files.".format(
+    "(each dir + .html alias) + homepage + legal + meta files + sw.js.".format(
         len(TOOLS), len(DURATION_PAGES)
     )
 )
