@@ -1638,6 +1638,7 @@ body.room-mode .room-ancestor {
    is already configured — the phone is across the room and nobody is editing
    a number field from there. */
 .instrument.is-room .set-row,
+.instrument.is-room .copy-link-btn,
 .instrument.is-room .field-row,
 .instrument.is-room .preset-row,
 .instrument.is-room .notify-row,

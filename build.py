@@ -90,6 +90,7 @@ def countdown_workspace(seconds=300, preset=False, label="Countdown Timer",
         <button type="button" class="ctrl-btn ghost" id="cd-reset">Reset</button>
         <button type="button" class="ctrl-btn stop" id="cd-stop-alarm" hidden>Stop Alarm</button>
         <button type="button" class="ctrl-btn ghost room-btn" data-room-mode="countdown" aria-pressed="false">Room mode</button>
+        <button type="button" class="ctrl-btn ghost copy-link-btn" id="cd-copy-link" title="Copy a link that opens this timer with this setup">Copy link</button>
       </div>
       <p class="wake-note" data-wake-note role="status" hidden><span class="wake-dot" aria-hidden="true"></span>Screen kept awake while this runs</p>
       <div class="notify-row">
@@ -140,6 +141,7 @@ TOOLS = [
             "Tap Start — the ring sweeps down from full as time elapses, and the readout counts down.",
             "Tap Pause to hold at the current time, then Start again to resume from exactly where you left off.",
             "When it reaches zero, the display flashes red and an alarm sounds — tap Stop Alarm to dismiss it, or Reset to set a new time.",
+            "Tap Copy link to put the current setup in a link, for example clocklab.net/countdown-timer/?t=25m. Add &start=1 to that link, and it starts on arrival.",
         ],
         faq=[
             ("Does the timer drift if my laptop is busy or the tab is in the background?", "No — clocklab reads the actual elapsed time from a timestamp each time it renders, rather than counting down once per interval tick. The ticking itself runs in a Web Worker, which browsers throttle far less aggressively than a hidden tab's normal timers, so a backgrounded countdown still notices zero and rings on time."),
@@ -147,6 +149,7 @@ TOOLS = [
             ("What happens if I reload the page mid-countdown?", "It resumes. clocklab saves the countdown's start timestamp and its total duration to your browser's local storage, so on reload it works out the remaining time against the real clock rather than from wherever the on-screen counter had got to. If the countdown ran out while the page was closed, it says so on load instead of pretending it's still going."),
             ("Can I pause partway through and come back later?", "Yes — Pause holds the exact remaining time, and it survives a reload or a browser restart too. Switching to another tool, another tab or another app doesn't lose the countdown's place."),
             ("Is there a maximum duration?", "Up to 23 hours, 59 minutes and 59 seconds in one countdown — plenty for cooking, workouts, presentations or focus blocks."),
+            ("Can I share a countdown as a link?", "Yes. The address bar carries the setup as ?t=, so a link such as clocklab.net/countdown-timer/?t=1h30m opens with 1:30:00 on the dial. The Copy link button writes that link to the clipboard. Add &start=1 and the countdown starts as soon as the page opens. The Interval and Pomodoro timers accept ?work=20s&rest=10s&rounds=8 and ?focus=25m&short=5m&long=15m in the same way."),
             ("What does Room mode do, and will it stop my phone sleeping?", "Room mode blows the readout up to fill the screen — page chrome hidden, digits sized to be read from the back of a room — and while it is on clocklab also asks the browser for a screen wake lock so the device does not dim and lock mid-countdown. The lock is released the moment you pause, reset, or dismiss the alarm, so a phone left on a bench does not sit lit all afternoon; a small “Screen kept awake” line appears whenever the lock is actually being held. Not every browser offers that API, and where it is missing Room mode still lays out the same, it simply cannot override the device\u2019s own sleep timer."),
         ],
         related=["pomodoro-timer", "interval-timer", "alarm-clock"],
@@ -255,6 +258,7 @@ TOOLS = [
         <button type="button" class="ctrl-btn ghost" id="pd-skip">Skip phase</button>
         <button type="button" class="ctrl-btn ghost" id="pd-reset">Reset</button>
         <button type="button" class="ctrl-btn ghost room-btn" data-room-mode="pomodoro" aria-pressed="false">Room mode</button>
+        <button type="button" class="ctrl-btn ghost copy-link-btn" id="pd-copy-link" title="Copy a link that opens this timer with this setup">Copy link</button>
       </div>
       <p class="wake-note" data-wake-note role="status" hidden><span class="wake-dot" aria-hidden="true"></span>Screen kept awake while this runs</p>
       <div class="notify-row">
@@ -369,6 +373,7 @@ TOOLS = [
         <button type="button" class="ctrl-btn" id="iv-pause" disabled>Pause</button>
         <button type="button" class="ctrl-btn ghost" id="iv-reset">Reset</button>
         <button type="button" class="ctrl-btn ghost room-btn" data-room-mode="interval" aria-pressed="false">Room mode</button>
+        <button type="button" class="ctrl-btn ghost copy-link-btn" id="iv-copy-link" title="Copy a link that opens this timer with this setup">Copy link</button>
       </div>
       <p class="wake-note" data-wake-note role="status" hidden><span class="wake-dot" aria-hidden="true"></span>Screen kept awake while this runs</p>
       <div class="notify-row">
