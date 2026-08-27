@@ -660,9 +660,12 @@ def head(title, description, canonical_path, json_ld):
   <meta property="og:title" content="{title}">
   <meta property="og:description" content="{description}">
   <meta property="og:url" content="{canonical}">
-  <meta name="twitter:card" content="summary">
   <meta name="twitter:title" content="{title}">
   <meta name="twitter:description" content="{description}">
+  <meta property="og:image" content="{site}/assets/og-image.png">
+  <meta property="og:image:width" content="1200">
+  <meta property="og:image:height" content="630">
+  <meta name="twitter:card" content="summary_large_image">
   <link rel="stylesheet" href="/assets/style.css">
   <script type="application/ld+json">{json_ld}</script>
   {adsense}
@@ -673,6 +676,7 @@ def head(title, description, canonical_path, json_ld):
         title=title,
         description=description,
         canonical=canonical,
+        site=SITE,
         json_ld=json_ld,
         adsense=ADSENSE,
     )
