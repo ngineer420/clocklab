@@ -15,6 +15,7 @@ with the correct "text/html" content type. So every tool/legal page ships
 as BOTH "<slug>/index.html" (the true clean path, trailing slash) and
 "<slug>.html" (a flat, real .html alias, also correctly text/html).
 """
+import datetime
 import hashlib
 import os
 import json
@@ -23,6 +24,8 @@ import sys
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 SITE = "https://clocklab.net"
+# The fallback <lastmod> for a sitemap URL whose file is somehow missing.
+# Every real URL takes its date from its own file instead. See last_modified().
 TODAY = "2026-08-10"
 
 # `python3 build.py --check` writes nothing. It compares every generated file
@@ -82,7 +85,7 @@ def countdown_workspace(seconds=300, preset=False, label="Countdown Timer",
     <div class="instrument"{duration}>
       <div class="nameplate">
         <span class="nameplate-label">{label}</span>
-        <span class="status-led" id="cd-status" data-state="idle">Idle</span>
+        <span class="status-led" role="status" id="cd-status" data-state="idle">Idle</span>
       </div>
       <div class="dial-wrap">
         <div class="dial-mount" id="cd-dial"></div>
@@ -194,7 +197,7 @@ TOOLS = [
     <div class="instrument">
       <div class="nameplate">
         <span class="nameplate-label">Stopwatch</span>
-        <span class="status-led" id="sw-status" data-state="idle">Idle</span>
+        <span class="status-led" role="status" id="sw-status" data-state="idle">Idle</span>
       </div>
       <div class="dial-wrap">
         <div class="dial-mount" id="sw-dial"></div>
@@ -248,7 +251,7 @@ TOOLS = [
     <div class="instrument">
       <div class="nameplate">
         <span class="nameplate-label">Pomodoro Timer</span>
-        <span class="status-led" id="pd-status" data-state="idle">Idle</span>
+        <span class="status-led" role="status" id="pd-status" data-state="idle">Idle</span>
       </div>
       <div class="dial-wrap">
         <div class="dial-mount" id="pd-dial"></div>
@@ -308,7 +311,7 @@ TOOLS = [
     <div class="instrument">
       <div class="nameplate">
         <span class="nameplate-label">Alarm Clock</span>
-        <span class="status-led" id="al-status" data-state="idle">No alarm set</span>
+        <span class="status-led" role="status" id="al-status" data-state="idle">No alarm set</span>
       </div>
       <div class="dial-wrap">
         <div class="dial-mount" id="al-dial"></div>
@@ -365,7 +368,7 @@ TOOLS = [
     <div class="instrument">
       <div class="nameplate">
         <span class="nameplate-label">Interval Timer</span>
-        <span class="status-led" id="iv-status" data-state="idle">Idle</span>
+        <span class="status-led" role="status" id="iv-status" data-state="idle">Idle</span>
       </div>
       <div class="dial-wrap">
         <div class="dial-mount" id="iv-dial"></div>
@@ -430,6 +433,7 @@ TOOLS = [
         <select id="wc-add-select" aria-label="Choose a city to add"></select>
         <button type="button" class="ctrl-btn ghost" id="wc-add-btn">+ Add city</button>
       </div>
+      <p class="visually-hidden" id="wc-announce" role="status"></p>
     </div>
 """,
     ),
@@ -469,6 +473,18 @@ FAVICON_SVG = """<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64">
 """
 
 ERABBIT = '<a href="https://erabb.it" class="erabbit-mark" aria-label="erabb.it"><img src="data:image/svg+xml,<svg xmlns=%22http://www.w3.org/2000/svg%22 viewBox=%220 0 100 100%22><text y=%22.9em%22 font-size=%2290%22>\U0001F407</text></svg>" width="10" height="10" alt=""></a>'
+
+# Peer tools from the same portfolio, in the footer of every page.
+#
+# Four, not nineteen. A footer that lists every site anybody owns reads as a
+# link farm and helps nobody. These four are the ones a person who came here
+# for a timer plausibly wants next.
+RELATED_SITES = [
+    ("https://perfecttune.net", "perfecttune.net", "Tuner and metronome"),
+    ("https://drawlots.net", "drawlots.net", "Random draws"),
+    ("https://calculatoreuphoria.com", "calculatoreuphoria.com", "Calculators"),
+    ("https://paperprintouts.com", "paperprintouts.com", "Printable paper"),
+]
 
 THEME_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>'
 
@@ -631,6 +647,13 @@ def chrome(current):
 
 
 def footer():
+    peers = "\n".join(
+        '          <li><a href="{url}" rel="noopener">{name}'
+        '<span class="peer-note">{note}</span></a></li>'.format(
+            url=url, name=esc(name), note=esc(note)
+        )
+        for url, name, note in RELATED_SITES
+    )
     return """  <footer class="site-footer">
     <div class="wrap">
       <p class="footer-tag">clocklab.net — browser-only timers. Nothing you set here ever leaves this tab.</p>
@@ -639,12 +662,45 @@ def footer():
         <li><a href="/terms/">Terms</a></li>
       </ul>
     </div>
+    <div class="wrap">
+      <nav class="footer-peers" aria-label="Related tools">
+        <span class="footer-peers-label">Related tools</span>
+        <ul>
+{peers}
+        </ul>
+      </nav>
+    </div>
   </footer>
-{erabbit}""".format(erabbit=ERABBIT)
+{erabbit}""".format(peers=peers, erabbit=ERABBIT)
 
 
-def head(title, description, canonical_path, json_ld):
+def breadcrumb_ld(trail):
+    """A BreadcrumbList for one page below the root.
+
+    `trail` is a list of (name, path) pairs, outermost first, ending with the
+    page itself. The home link is added here so no caller can forget it. The
+    homepage gets no breadcrumb: a trail of one item states nothing.
+    """
+    items = [("Home", "/")] + list(trail)
+    elements = [
+        '{{"@type":"ListItem","position":{pos},"name":{name},"item":{url}}}'.format(
+            pos=i + 1, name=jstr(name), url=jstr(SITE + path)
+        )
+        for i, (name, path) in enumerate(items)
+    ]
+    return (
+        '{{"@context":"https://schema.org","@type":"BreadcrumbList",'
+        '"itemListElement":[{e}]}}'.format(e=",".join(elements))
+    )
+
+
+def head(title, description, canonical_path, json_ld, trail=None):
     canonical = SITE + canonical_path
+    crumbs = ""
+    if trail:
+        crumbs = '\n  <script type="application/ld+json">{}</script>'.format(
+            breadcrumb_ld(trail)
+        )
     return """<head>
   {no_flash}
   <meta charset="UTF-8">
@@ -667,9 +723,10 @@ def head(title, description, canonical_path, json_ld):
   <meta property="og:image:height" content="630">
   <meta name="twitter:card" content="summary_large_image">
   <link rel="stylesheet" href="/assets/style.css">
-  <script type="application/ld+json">{json_ld}</script>
+  <script type="application/ld+json">{json_ld}</script>{crumbs}
   {adsense}
 </head>""".format(
+        crumbs=crumbs,
         no_flash=NO_FLASH,
         favicon=FAVICON_PATH,
         theme_color=THEME_COLOR,
@@ -694,14 +751,19 @@ def scripts_tail():
 def write(path, content):
     OUTPUT[path] = content
     full = os.path.join(ROOT, path)
+    try:
+        with open(full, "r", encoding="utf-8") as f:
+            current = f.read()
+    except OSError:
+        current = None
     if CHECK:
-        try:
-            with open(full, "r", encoding="utf-8") as f:
-                current = f.read()
-        except OSError:
-            current = None
         if current != content:
             STALE.append(path)
+        return
+    # Leave a file alone when its content already matches. The sitemap reads
+    # each page's mtime for its <lastmod>, so a rewrite that changes nothing
+    # would move every date on every build.
+    if current == content:
         return
     d = os.path.dirname(full)
     if d:
@@ -820,7 +882,8 @@ def tool_page(tool):
     )
 
     html = "<!doctype html>\n<html lang=\"en\">\n" + head(
-        title, tool["description"], canonical_path, json_ld
+        title, tool["description"], canonical_path, json_ld,
+        trail=[(tool["name"], canonical_path)],
     ) + "\n" + body + "\n</html>\n"
     write_clean(tool["slug"], html)
 
@@ -1413,7 +1476,8 @@ def duration_page(entry):
     )
 
     html = "<!doctype html>\n<html lang=\"en\">\n" + head(
-        title, entry["description"], canonical_path, json_ld
+        title, entry["description"], canonical_path, json_ld,
+        trail=[("Preset Timers", "/timers/"), (entry["name"], canonical_path)],
     ) + "\n" + body + "\n</html>\n"
     write_clean(entry["slug"], html)
 
@@ -1466,7 +1530,8 @@ def timers_hub():
 </body>""".format(chrome=chrome(canonical_path), cards=cards, footer=footer(), scripts=scripts_tail())
 
     html = "<!doctype html>\n<html lang=\"en\">\n" + head(
-        title, description, canonical_path, json_ld
+        title, description, canonical_path, json_ld,
+        trail=[("Preset Timers", canonical_path)],
     ) + "\n" + body + "\n</html>\n"
     write_clean("timers", html)
 
@@ -1594,7 +1659,10 @@ def legal_page(slug, title_text, body_html):
 {footer}
 {scripts}
 </body>""".format(chrome=chrome(canonical_path), content=body_html, footer=footer(), scripts=scripts_tail())
-    html = "<!doctype html>\n<html lang=\"en\">\n" + head(title, description, canonical_path, json_ld) + "\n" + body + "\n</html>\n"
+    html = "<!doctype html>\n<html lang=\"en\">\n" + head(
+        title, description, canonical_path, json_ld,
+        trail=[(title_text, canonical_path)],
+    ) + "\n" + body + "\n</html>\n"
     write_clean(slug, html)
 
 
@@ -1683,8 +1751,39 @@ sitemap_urls = (
     + [clean_url(d["slug"]) for d in DURATION_PAGES]
     + [clean_url("privacy"), clean_url("terms")]
 )
+
+
+def page_file(url_path):
+    """The file the server sends for a sitemap URL: "/" -> index.html,
+    "/countdown-timer/" -> countdown-timer/index.html."""
+    if url_path == "/":
+        return "index.html"
+    return url_path.strip("/") + "/index.html"
+
+
+def last_modified(url_path):
+    """The <lastmod> date for one sitemap URL.
+
+    It reads the mtime of the file the server sends for that URL. write()
+    leaves a file alone when its content has not changed, so that mtime is
+    the last time the page itself really changed, not the last time the build
+    ran. A date per URL is the point: one frozen date on all 25 URLs tells a
+    crawler nothing.
+
+    A fresh clone stamps every file with the checkout time, so a build there
+    dates every URL the same day. Build on the working copy that holds the
+    history, or accept that one flat date.
+    """
+    full = os.path.join(ROOT, page_file(url_path))
+    try:
+        stamp = os.path.getmtime(full)
+    except OSError:
+        return TODAY
+    return datetime.date.fromtimestamp(stamp).isoformat()
+
+
 sitemap_entries = "\n".join(
-    "  <url><loc>{}{}</loc><lastmod>{}</lastmod></url>".format(SITE, u, TODAY)
+    "  <url><loc>{}{}</loc><lastmod>{}</lastmod></url>".format(SITE, u, last_modified(u))
     for u in sitemap_urls
 )
 sitemap = (
@@ -1735,14 +1834,6 @@ def same_origin_path(href):
     if href.startswith("/") and not href.startswith("//"):
         return href
     return None
-
-
-def page_file(url_path):
-    """The file the server sends for a sitemap URL: "/" -> index.html,
-    "/countdown-timer/" -> countdown-timer/index.html."""
-    if url_path == "/":
-        return "index.html"
-    return url_path.strip("/") + "/index.html"
 
 
 def precached_content(path):

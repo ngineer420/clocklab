@@ -56,6 +56,33 @@
     return pad2(h) + ":" + pad2(m) + ":" + pad2(s) + "." + pad2(cs);
   }
 
+  /*
+   * Every status light is a live region, so every write to one is an
+   * announcement. A screen reader must hear "Running", "Paused", "Ringing" —
+   * and must not hear the same word again because a render ran.
+   *
+   * So nothing writes to a status light directly. This is the one funnel,
+   * and it compares against the text already there before it touches the
+   * node. The data-state attribute drives the colour only and announces
+   * nothing, but it gets the same guard so an unchanged light causes no DOM
+   * work at all.
+   *
+   * The ticking readouts are deliberately left out of this. A countdown
+   * display changes every second, and a live region that announces the time
+   * every second is not information, it is a stuck horn. State changes and
+   * the headline figure announce. The clock does not.
+   */
+  function announce(el, text) {
+    if (!el || el.textContent === text) return;
+    el.textContent = text;
+  }
+
+  function setStatus(el, text, state) {
+    if (!el) return;
+    if (el.getAttribute("data-state") !== state) el.setAttribute("data-state", state);
+    announce(el, text);
+  }
+
   function fmtMinSec(totalSeconds) {
     totalSeconds = Math.max(0, Math.round(totalSeconds));
     var m = Math.floor(totalSeconds / 60);
@@ -734,8 +761,7 @@
       ticker.stop();
       accumulatedMs = totalMs;
       ringing = true;
-      statusEl.textContent = live ? "Ringing" : "Finished";
-      statusEl.setAttribute("data-state", "ringing");
+      setStatus(statusEl, live ? "Ringing" : "Finished", "ringing");
       startBtn.hidden = true;
       pauseBtn.hidden = true;
       resetBtn.hidden = true;
@@ -754,8 +780,7 @@
     }
 
     function setRunningUi() {
-      statusEl.textContent = "Running";
-      statusEl.setAttribute("data-state", "running");
+      setStatus(statusEl, "Running", "running");
       startBtn.disabled = true;
       pauseBtn.disabled = false;
       setInputsDisabled(true);
@@ -764,8 +789,7 @@
     }
 
     function setPausedUi() {
-      statusEl.textContent = "Paused";
-      statusEl.setAttribute("data-state", "paused");
+      setStatus(statusEl, "Paused", "paused");
       startBtn.disabled = false;
       pauseBtn.disabled = true;
       setInputsDisabled(true);
@@ -780,8 +804,7 @@
       alarmHandle = null;
       accumulatedMs = 0;
       totalMs = readInputsMs();
-      statusEl.textContent = "Idle";
-      statusEl.setAttribute("data-state", "idle");
+      setStatus(statusEl, "Idle", "idle");
       startBtn.hidden = false;
       pauseBtn.hidden = false;
       resetBtn.hidden = false;
@@ -1061,20 +1084,17 @@
       if (state === "running") WakeLock.hold(WAKE_KEY);
       else WakeLock.free(WAKE_KEY);
       if (state === "idle") {
-        statusEl.textContent = "Idle";
-        statusEl.setAttribute("data-state", "idle");
+        setStatus(statusEl, "Idle", "idle");
         startBtn.textContent = "Start";
         lapBtn.disabled = true;
         resetBtn.disabled = true;
       } else if (state === "running") {
-        statusEl.textContent = "Running";
-        statusEl.setAttribute("data-state", "running");
+        setStatus(statusEl, "Running", "running");
         startBtn.textContent = "Stop";
         lapBtn.disabled = false;
         resetBtn.disabled = true;
       } else {
-        statusEl.textContent = "Stopped";
-        statusEl.setAttribute("data-state", "paused");
+        setStatus(statusEl, "Stopped", "paused");
         startBtn.textContent = "Resume";
         lapBtn.disabled = true;
         resetBtn.disabled = false;
@@ -1300,8 +1320,7 @@
       if (totalMs === 0) totalMs = phaseDurationMs(phase);
       running = true;
       startTs = now();
-      statusEl.textContent = "Running";
-      statusEl.setAttribute("data-state", "running");
+      setStatus(statusEl, "Running", "running");
       startBtn.disabled = true;
       pauseBtn.disabled = false;
       setInputsDisabled(true);
@@ -1314,8 +1333,7 @@
       if (!running) return;
       accumulatedMs += now() - startTs;
       running = false;
-      statusEl.textContent = "Paused";
-      statusEl.setAttribute("data-state", "paused");
+      setStatus(statusEl, "Paused", "paused");
       startBtn.disabled = false;
       pauseBtn.disabled = true;
       ticker.stop();
@@ -1339,8 +1357,7 @@
       sessionIndex = 0;
       accumulatedMs = 0;
       totalMs = phaseDurationMs("work");
-      statusEl.textContent = "Idle";
-      statusEl.setAttribute("data-state", "idle");
+      setStatus(statusEl, "Idle", "idle");
       startBtn.disabled = false;
       pauseBtn.disabled = true;
       setInputsDisabled(false);
@@ -1377,8 +1394,7 @@
       running = !!s.running && startTs > 0;
 
       if (running) {
-        statusEl.textContent = "Running";
-        statusEl.setAttribute("data-state", "running");
+        setStatus(statusEl, "Running", "running");
         startBtn.disabled = true;
         pauseBtn.disabled = false;
         setInputsDisabled(true);
@@ -1389,8 +1405,7 @@
         tick();
         ticker.start();
       } else {
-        statusEl.textContent = "Paused";
-        statusEl.setAttribute("data-state", "paused");
+        setStatus(statusEl, "Paused", "paused");
         startBtn.disabled = false;
         pauseBtn.disabled = true;
         setInputsDisabled(true);
@@ -1530,8 +1545,7 @@
     // time went by while the tab was shut.
     function ring(live) {
       ringing = true;
-      statusEl.textContent = live ? "Ringing" : "Alarm passed";
-      statusEl.setAttribute("data-state", "ringing");
+      setStatus(statusEl, live ? "Ringing" : "Alarm passed", "ringing");
       readout.classList.add("is-ringing");
       armBtn.hidden = true;
       cancelBtn.hidden = true;
@@ -1549,8 +1563,7 @@
     }
 
     function setArmed(h, m) {
-      statusEl.textContent = "Armed for " + pad2(h) + ":" + pad2(m);
-      statusEl.setAttribute("data-state", "armed");
+      setStatus(statusEl, "Armed for " + pad2(h) + ":" + pad2(m), "armed");
       armBtn.hidden = true;
       cancelBtn.hidden = false;
       cancelBtn.disabled = false;
@@ -1563,8 +1576,7 @@
       armed = false;
       ringing = false;
       targetTs = null;
-      statusEl.textContent = "No alarm set";
-      statusEl.setAttribute("data-state", "idle");
+      setStatus(statusEl, "No alarm set", "idle");
       armBtn.hidden = false;
       cancelBtn.hidden = true;
       stopBtn.hidden = true;
@@ -1806,8 +1818,7 @@
       render();
       if (phase === "done") {
         running = false;
-        statusEl.textContent = "Done";
-        statusEl.setAttribute("data-state", "idle");
+        setStatus(statusEl, "Done", "idle");
         startBtn.disabled = false;
         startBtn.textContent = "Restart";
         pauseBtn.disabled = true;
@@ -1841,8 +1852,7 @@
       everStarted = true;
       running = true;
       startTs = now();
-      statusEl.textContent = "Running";
-      statusEl.setAttribute("data-state", "running");
+      setStatus(statusEl, "Running", "running");
       startBtn.disabled = true;
       pauseBtn.disabled = false;
       setInputsDisabled(true);
@@ -1857,8 +1867,7 @@
       if (!running) return;
       accumulatedMs += now() - startTs;
       running = false;
-      statusEl.textContent = "Paused";
-      statusEl.setAttribute("data-state", "paused");
+      setStatus(statusEl, "Paused", "paused");
       startBtn.disabled = false;
       pauseBtn.disabled = true;
       ticker.stop();
@@ -1877,8 +1886,7 @@
       everStarted = false;
       accumulatedMs = 0;
       totalMs = phaseDurationMs("work");
-      statusEl.textContent = "Idle";
-      statusEl.setAttribute("data-state", "idle");
+      setStatus(statusEl, "Idle", "idle");
       startBtn.disabled = false;
       startBtn.textContent = "Start";
       pauseBtn.disabled = true;
@@ -1916,8 +1924,7 @@
       running = !!s.running && startTs > 0 && phase !== "done";
 
       if (running) {
-        statusEl.textContent = "Running";
-        statusEl.setAttribute("data-state", "running");
+        setStatus(statusEl, "Running", "running");
         startBtn.disabled = true;
         pauseBtn.disabled = false;
         setInputsDisabled(true);
@@ -1926,15 +1933,13 @@
         tick();
         if (running) ticker.start();
       } else if (phase === "done") {
-        statusEl.textContent = "Done";
-        statusEl.setAttribute("data-state", "idle");
+        setStatus(statusEl, "Done", "idle");
         startBtn.textContent = "Restart";
         pauseBtn.disabled = true;
         renderPips();
         render();
       } else {
-        statusEl.textContent = "Paused";
-        statusEl.setAttribute("data-state", "paused");
+        setStatus(statusEl, "Paused", "paused");
         pauseBtn.disabled = true;
         setInputsDisabled(true);
         renderPips();
@@ -2034,6 +2039,10 @@
     if (!grid) return;
     var addSelect = document.getElementById("wc-add-select");
     var addBtn = document.getElementById("wc-add-btn");
+    // The grid ticks every second, so it can never be a live region. Adding
+    // or removing a city is a real state change with no other spoken
+    // feedback, so it gets its own region and says only that.
+    var announceEl = document.getElementById("wc-announce");
 
     var selected = loadCities();
 
@@ -2163,6 +2172,7 @@
       });
       saveCities();
       renderGrid();
+      announce(announceEl, "Removed " + cityByTz(tz).name);
     });
 
     addBtn.addEventListener("click", function () {
@@ -2171,6 +2181,7 @@
       selected.push(tz);
       saveCities();
       renderGrid();
+      announce(announceEl, "Added " + cityByTz(tz).name);
     });
 
     renderGrid();
