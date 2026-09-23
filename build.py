@@ -147,7 +147,7 @@ TOOLS = [
         tagline="Set it, start it, get an alarm when it hits zero.",
         description="Free browser-based countdown timer. Set hours, minutes and seconds, start/pause/reset, and get an audible alarm at zero. No install, works offline.",
         icon='<path d="M6 3h12M6 21h12M6 3c0 6 5 7 6 9-1 2-6 3-6 9M18 3c0 6-5 7-6 9 1 2 6 3 6 9"/>',
-        intro="Dial in hours, minutes and seconds and clocklab counts down to zero, sweeping the bezel ring around the display as it goes. When time runs out, it rings an alarm built from oscillator tones — no audio file, no download — until you tap Stop.",
+        intro="Dial in hours, minutes and seconds and clocklab counts down to zero, sweeping the bezel ring around the display as it goes. When time runs out, it rings an alarm built from oscillator tones — no audio file, no download — for up to five minutes, or until you tap Stop.",
         how_to=[
             "Set Hours, Minutes and Seconds with the number fields under the dial.",
             "Tap Start — the ring sweeps down from full as time elapses, and the readout counts down.",
@@ -290,7 +290,7 @@ TOOLS = [
         tagline="Set a time on the dial, it rings when you get there.",
         description="Free browser-based alarm clock. Set a wall-clock time, watch the analog dial track it, and get an alarm when the time arrives — with an optional daily repeat.",
         icon='<circle cx="12" cy="13" r="8"/><path d="M12 9v4l3 2"/><path d="M5 4L3 6"/><path d="M19 4l2 2"/>',
-        intro="Pick a time and clocklab arms an alarm for it — a small red marker appears on the bezel showing exactly where on the clock face it will ring, while the hour and minute hands keep tracking the real current time. When the clock reaches that mark, it rings until you dismiss it.",
+        intro="Pick a time and clocklab arms an alarm for it — a small red marker appears on the bezel showing exactly where on the clock face it will ring, while the hour and minute hands keep tracking the real current time. When the clock reaches that mark, it rings for up to five minutes, or until you dismiss it.",
         how_to=[
             "Pick a time in the Alarm time field — it defaults to five minutes from now.",
             "Tap Set Alarm — a red marker appears on the dial at that position, and the status line confirms the armed time.",
