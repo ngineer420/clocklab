@@ -5,7 +5,7 @@
  * VERSION is a hash of every file in PRECACHE. A new deploy therefore gets a
  * new cache name, and the activate handler deletes every older
  * "clocklab-*" cache. */
-const VERSION = "764f3a3dcbc2";
+const VERSION = "61483b86737e";
 const CACHE = "clocklab-" + VERSION;
 const PRECACHE = [
   "/",
