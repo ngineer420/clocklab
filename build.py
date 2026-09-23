@@ -650,6 +650,31 @@ def chrome(current):
     return "\n".join([SKIP_LINK, header(), toolbar(current)])
 
 
+# The one contact route the site offers.
+#
+# Every character of the href and of the visible text goes out as a decimal
+# numeric character reference. The browser decodes these while it parses. The
+# anchor is therefore a real mailto link.
+#
+# The link works with no JavaScript. It keeps its place in the tab order. A
+# screen reader announces the plain address. A scraper that reads the raw HTML
+# and looks for an at sign finds nothing.
+CONTACT = "hello@goodbotbad.bot"
+
+
+def entity_encode(text):
+    """Every character as a decimal numeric character reference."""
+    return "".join("&#%d;" % ord(c) for c in text)
+
+
+def contact_link():
+    """The contact anchor in the footer of every page."""
+    return '<a href="{href}">{text}</a>'.format(
+        href=entity_encode("mailto:" + CONTACT),
+        text=entity_encode(CONTACT),
+    )
+
+
 def footer():
     peers = "\n".join(
         '          <li><a href="{url}" rel="noopener">{name}'
@@ -664,6 +689,7 @@ def footer():
       <ul class="footer-links">
         <li><a href="/privacy/">Privacy</a></li>
         <li><a href="/terms/">Terms</a></li>
+        <li class="footer-contact">{contact}</li>
       </ul>
     </div>
     <div class="wrap">
@@ -675,7 +701,7 @@ def footer():
       </nav>
     </div>
   </footer>
-{erabbit}""".format(peers=peers, erabbit=ERABBIT)
+{erabbit}""".format(peers=peers, erabbit=ERABBIT, contact=contact_link())
 
 
 def breadcrumb_ld(trail):
@@ -1688,7 +1714,7 @@ PRIVACY_BODY = """        <h1>Privacy</h1>
         <p>This site shows ads served by Google AdSense, which may use cookies to personalize ads based on your visits to this and other sites. You can control ad personalization through <a href="https://adssettings.google.com" rel="noopener">Google's Ad Settings</a>, and learn more about how Google uses data at <a href="https://policies.google.com/technologies/partner-sites" rel="noopener">policies.google.com/technologies/partner-sites</a>.</p>
 
         <h2>Contact</h2>
-        <p>Questions about this policy can be raised via the <a href="https://erabb.it" rel="noopener">erabb.it</a> portfolio site linked in the corner of every page here.</p>"""
+        <p>Send questions about this policy to the contact address in the footer of this page.</p>"""
 
 TERMS_BODY = """        <h1>Terms</h1>
         <p>clocklab.net's timer tools are provided free, as-is, for anyone to use.</p>
