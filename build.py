@@ -20,13 +20,15 @@ import hashlib
 import os
 import json
 import re
+import subprocess
 import sys
 
 ROOT = os.path.dirname(os.path.abspath(__file__))
 SITE = "https://clocklab.net"
-# The fallback <lastmod> for a sitemap URL whose file is somehow missing.
-# Every real URL takes its date from its own file instead. See last_modified().
-TODAY = "2026-08-10"
+# The date a page carries in the sitemap when this build changed it. Every
+# unchanged page takes the date of the commit that last touched it instead.
+# See page_date().
+TODAY = datetime.date.today().isoformat()
 
 # `python3 build.py --check` writes nothing. It compares every generated file
 # with the file on disk and exits 1 when one of them is stale. Run it before a
@@ -36,6 +38,8 @@ CHECK = "--check" in sys.argv[1:]
 # The service worker generator at the bottom reads the page HTML from here.
 OUTPUT = {}
 STALE = []
+# Every path this run actually rewrote. The sitemap dates those pages today.
+CHANGED = set()
 
 # ---------------------------------------------------------------- tools --
 
@@ -759,10 +763,11 @@ def write(path, content):
     if CHECK:
         if current != content:
             STALE.append(path)
+            CHANGED.add(path)
         return
-    # Leave a file alone when its content already matches. The sitemap reads
-    # each page's mtime for its <lastmod>, so a rewrite that changes nothing
-    # would move every date on every build.
+    # Leave a file alone when its content already matches. A rewrite that
+    # changes nothing is still a rewrite, and page_date() must not read it as
+    # a change.
     if current == content:
         return
     d = os.path.dirname(full)
@@ -770,6 +775,7 @@ def write(path, content):
         os.makedirs(d, exist_ok=True)
     with open(full, "w", encoding="utf-8") as f:
         f.write(content)
+    CHANGED.add(path)
 
 
 def write_clean(slug, content):
@@ -1761,29 +1767,85 @@ def page_file(url_path):
     return url_path.strip("/") + "/index.html"
 
 
-def last_modified(url_path):
-    """The <lastmod> date for one sitemap URL.
+def _git(args):
+    """One git command, or None when git cannot answer.
 
-    It reads the mtime of the file the server sends for that URL. write()
-    leaves a file alone when its content has not changed, so that mtime is
-    the last time the page itself really changed, not the last time the build
-    ran. A date per URL is the point: one frozen date on all 25 URLs tells a
-    crawler nothing.
-
-    A fresh clone stamps every file with the checkout time, so a build there
-    dates every URL the same day. Build on the working copy that holds the
-    history, or accept that one flat date.
+    The generator has to keep working in a directory that git knows nothing
+    about, so every failure here is a fallback, never an error.
     """
-    full = os.path.join(ROOT, page_file(url_path))
     try:
-        stamp = os.path.getmtime(full)
+        done = subprocess.run(
+            ["git"] + args,
+            cwd=ROOT,
+            stdout=subprocess.PIPE,
+            stderr=subprocess.DEVNULL,
+            timeout=20,
+        )
+    except (OSError, subprocess.SubprocessError):
+        return None
+    if done.returncode != 0:
+        return None
+    return done.stdout.decode("utf-8", "replace")
+
+
+_DIRTY = None
+
+
+def dirty_paths():
+    """Every path git reports as changed or untracked, read once.
+
+    A page that an earlier build on this branch already rewrote is not in
+    CHANGED, but it is still newer than the commit that last touched it.
+    Without this set the sitemap would date that page from that old commit
+    and claim the site serves content older than it does.
+    """
+    global _DIRTY
+    if _DIRTY is not None:
+        return _DIRTY
+    _DIRTY = set()
+    out = _git(["status", "--porcelain", "--untracked-files=all"])
+    if out is None:
+        return _DIRTY
+    for line in out.splitlines():
+        if len(line) < 4:
+            continue
+        path = line[3:]
+        # A rename reads "R  old -> new". The new path is the one that exists.
+        if " -> " in path:
+            path = path.split(" -> ", 1)[1]
+        _DIRTY.add(path.strip().strip('"'))
+    return _DIRTY
+
+
+def page_date(path):
+    """The <lastmod> date for one generated page, as YYYY-MM-DD.
+
+    Commit dates, not file mtimes. Git does not keep mtimes, so a fresh clone
+    stamps every file with the checkout time, and an mtime-based sitemap
+    rewrites all 25 dates on any machine that cloned on a later day. That is a
+    drift generator in a repo whose whole point is that `build.py --check`
+    catches drift.
+
+    The order is: this build changed the page, or git already calls it dirty,
+    so today. Otherwise the date of the commit that last touched it. Outside a
+    git checkout, the file mtime, so the generator still runs anywhere.
+    """
+    if path in CHANGED or path in dirty_paths():
+        return TODAY
+    out = _git(["log", "-1", "--format=%cs", "--", path])
+    if out and out.strip():
+        return out.strip()
+    try:
+        stamp = os.path.getmtime(os.path.join(ROOT, path))
     except OSError:
         return TODAY
     return datetime.date.fromtimestamp(stamp).isoformat()
 
 
 sitemap_entries = "\n".join(
-    "  <url><loc>{}{}</loc><lastmod>{}</lastmod></url>".format(SITE, u, last_modified(u))
+    "  <url><loc>{}{}</loc><lastmod>{}</lastmod></url>".format(
+        SITE, u, page_date(page_file(u))
+    )
     for u in sitemap_urls
 )
 sitemap = (
