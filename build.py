@@ -480,14 +480,11 @@ ERABBIT = '<a href="https://erabb.it" class="erabbit-mark" aria-label="erabb.it"
 
 # Peer tools from the same portfolio, in the footer of every page.
 #
-# Four, not nineteen. A footer that lists every site anybody owns reads as a
-# link farm and helps nobody. These four are the ones a person who came here
-# for a timer plausibly wants next.
+# One, not nineteen. A footer that lists every site anybody owns reads as a
+# link farm and helps nobody. This is the one a person who came here for a
+# timer plausibly wants next.
 RELATED_SITES = [
-    ("https://perfecttune.net", "perfecttune.net", "Tuner and metronome"),
     ("https://drawlots.net", "drawlots.net", "Random draws"),
-    ("https://calculatoreuphoria.com", "calculatoreuphoria.com", "Calculators"),
-    ("https://paperprintouts.com", "paperprintouts.com", "Printable paper"),
 ]
 
 THEME_ICON = '<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="1.8" stroke-linecap="round" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>'
